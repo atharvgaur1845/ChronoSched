@@ -1,0 +1,15 @@
+{
+  "name": "chronosched",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline school timetable generator — static site, no backend, no framework.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "verify": "node tools/verify-modules.mjs",
+    "test:scheduler": "node tools/scheduler-smoke-test.mjs",
+    "test": "npm run verify && npm run test:scheduler"
+  },
+  "keywords": ["timetable", "scheduling", "school", "vanilla-js", "github-pages"],
+  "license": "MIT"
+}

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "data": {
+    "schemaVersion": 1,
+    "school": {
+      "name": "Springfield Public School",
+      "academicYear": "2026-27"
+    },
+    "workingDays": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
+    "dayStart": "08:00",
+    "periodDurationMinutes": 40,
+    "periodCount": 8,
+    "breaks": [
+      {
+        "afterPeriod": 4,
+        "label": "Recess",
+        "durationMinutes": 20,
+        "isRecess": true
+      },
+      {
+        "afterPeriod": 6,
+        "label": "Short Break",
+        "durationMinutes": 10,
+        "isRecess": false
+      }
+    ],
+    "corePeriodWindow": {
+      "from": 1,
+      "to": 6
+    },
+    "constraintWeights": {
+      "corePeriodWindow": 10,
+      "recessSidePreference": 6,
+      "teacherGap": 4,
+      "preferredFreePeriod": 3,
+      "difficultySpread": 5,
+      "subjectSpread": 5,
+      "teacherDailyBalance": 2
+    }
+  }
+}

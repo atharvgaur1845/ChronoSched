@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "data": [
+    {
+      "id": "sub_eng",
+      "name": "English",
+      "shortName": "ENG",
+      "type": "THEORY",
+      "difficulty": 3,
+      "colorSlot": 1
+    },
+    {
+      "id": "sub_hin",
+      "name": "Hindi",
+      "shortName": "HIN",
+      "type": "THEORY",
+      "difficulty": 2,
+      "colorSlot": 2
+    },
+    {
+      "id": "sub_mat",
+      "name": "Mathematics",
+      "shortName": "MAT",
+      "type": "THEORY",
+      "difficulty": 5,
+      "colorSlot": 3
+    },
+    {
+      "id": "sub_sci",
+      "name": "Science",
+      "shortName": "SCI",
+      "type": "THEORY",
+      "difficulty": 4,
+      "colorSlot": 4
+    },
+    {
+      "id": "sub_sst",
+      "name": "Social Science",
+      "shortName": "SST",
+      "type": "THEORY",
+      "difficulty": 3,
+      "colorSlot": 5
+    },
+    {
+      "id": "sub_phy",
+      "name": "Physics",
+      "shortName": "PHY",
+      "type": "THEORY",
+      "difficulty": 5,
+      "colorSlot": 6
+    },
+    {
+      "id": "sub_che",
+      "name": "Chemistry",
+      "shortName": "CHE",
+      "type": "THEORY",
+      "difficulty": 4,
+      "colorSlot": 7
+    },
+    {
+      "id": "sub_bio",
+      "name": "Biology",
+      "shortName": "BIO",
+      "type": "THEORY",
+      "difficulty": 4,
+      "colorSlot": 8
+    },
+    {
+      "id": "sub_cs",
+      "name": "Computer Science",
+      "shortName": "CS",
+      "type": "THEORY",
+      "difficulty": 3,
+      "colorSlot": 9
+    },
+    {
+      "id": "sub_acc",
+      "name": "Accountancy",
+      "shortName": "ACC",
+      "type": "THEORY",
+      "difficulty": 4,
+      "colorSlot": 10
+    },
+    {
+      "id": "sub_bst",
+      "name": "Business Studies",
+      "shortName": "BST",
+      "type": "THEORY",
+      "difficulty": 3,
+      "colorSlot": 1
+    },
+    {
+      "id": "sub_eco",
+      "name": "Economics",
+      "shortName": "ECO",
+      "type": "THEORY",
+      "difficulty": 4,
+      "colorSlot": 2
+    },
+    {
+      "id": "sub_phl",
+      "name": "Physics Lab",
+      "shortName": "PHL",
+      "type": "LAB",
+      "difficulty": 3,
+      "colorSlot": 6
+    },
+    {
+      "id": "sub_chl",
+      "name": "Chemistry Lab",
+      "shortName": "CHL",
+      "type": "LAB",
+      "difficulty": 3,
+      "colorSlot": 7
+    },
+    {
+      "id": "sub_bil",
+      "name": "Biology Lab",
+      "shortName": "BIL",
+      "type": "LAB",
+      "difficulty": 3,
+      "colorSlot": 8
+    },
+    {
+      "id": "sub_csl",
+      "name": "Computer Lab",
+      "shortName": "CSL",
+      "type": "LAB",
+      "difficulty": 2,
+      "colorSlot": 9
+    },
+    {
+      "id": "sub_pe",
+      "name": "Physical Education",
+      "shortName": "PE",
+      "type": "ACTIVITY",
+      "difficulty": 1,
+      "colorSlot": 5
+    },
+    {
+      "id": "sub_lib",
+      "name": "Library",
+      "shortName": "LIB",
+      "type": "ACTIVITY",
+      "difficulty": 1,
+      "colorSlot": 4
+    }
+  ]
+}

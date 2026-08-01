@@ -1,0 +1,27 @@
+# ChronoSched has no build step and no runtime dependencies, so almost nothing
+# is generated. This list exists to keep editor and OS clutter out of a repo
+# that is deployed verbatim to GitHub Pages.
+
+# Node — only ever present if a developer adds tooling locally.
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Operating systems
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local scratch
+tmp/
+*.local.*
+
+# NOTE: vendor/ is deliberately NOT ignored. SheetJS and jsPDF are committed so
+# the app works offline in a school with unreliable internet, and so the Pages
+# deployment needs no install step.

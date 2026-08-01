@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "data": [
+    {
+      "id": "cls_10a",
+      "name": "10A",
+      "gradeLevel": 10,
+      "section": "A",
+      "studentCount": 42,
+      "roomId": null
+    },
+    {
+      "id": "cls_10b",
+      "name": "10B",
+      "gradeLevel": 10,
+      "section": "B",
+      "studentCount": 40,
+      "roomId": null
+    },
+    {
+      "id": "cls_11a",
+      "name": "11A",
+      "gradeLevel": 11,
+      "section": "A",
+      "studentCount": 38,
+      "roomId": null
+    },
+    {
+      "id": "cls_11b",
+      "name": "11B",
+      "gradeLevel": 11,
+      "section": "B",
+      "studentCount": 36,
+      "roomId": null
+    },
+    {
+      "id": "cls_12s",
+      "name": "12 Science",
+      "gradeLevel": 12,
+      "section": "Science",
+      "studentCount": 34,
+      "roomId": null
+    },
+    {
+      "id": "cls_12c",
+      "name": "12 Commerce",
+      "gradeLevel": 12,
+      "section": "Commerce",
+      "studentCount": 32,
+      "roomId": null
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 # ChronoSched — Architecture & Design Specification
 
-> **Status:** Design phase (v1.0)
+> **Status:** Built (v1.0) — this document describes the code as it exists.
 > **Stack:** HTML5 · CSS3 · Vanilla ES2022 modules · JSON · LocalStorage
-> **Deploy target:** GitHub Pages (static, no backend)
+> **Deploy target:** GitHub Pages (static, no backend, no build step)
 
 ---
 
@@ -30,150 +30,162 @@ ui/  ──▶  services/  ──▶  domain/  ──▶  core/
 `services/` may not import from `ui/`.
 `ui/` never touches `localStorage` or `fetch` directly.
 
-Violating this is the fastest way to make the project unmaintainable, so it is enforced by review and by an ESLint `no-restricted-imports` rule (optional dev-time only).
+Violating this is the fastest way to make the project unmaintainable, so it is **machine-enforced**: `tools/verify-modules.mjs` walks every module, resolves every relative import and fails if any of these edges is crossed. It runs in CI before deployment, so a violating import cannot reach the live site.
+
+The practical payoff is measurable: because `scheduling/` contains no DOM reference, the entire engine runs in Node in ~30ms (`npm run test:scheduler`). If that file ever needs a DOM shim, a layering rule has been broken.
 
 ---
 
 ## 1. Folder Structure
 
+This is the tree **as built** — 100 modules under `js/`.
+
 ```
 ChronoSched/
-├── index.html                     # Single shell page; app mounts into #app-root
+├── index.html                     # Shell; the only inline script applies the theme pre-paint
 ├── .nojekyll                      # Required: GitHub Pages must not run Jekyll
+├── package.json                   # Script runner only — the app has zero dependencies
 ├── README.md
+├── .github/workflows/deploy.yml   # Verify, then publish to Pages
+│
 ├── docs/
-│   ├── ARCHITECTURE.md            # This file
-│   ├── SCHEDULING.md              # Algorithm deep-dive
-│   └── DATA_SCHEMA.md             # JSON contracts + versioning/migrations
+│   └── ARCHITECTURE.md            # This file
+│
+├── tools/                         # Dev-only; never shipped to the browser
+│   ├── verify-modules.mjs         # Import/export integrity + layering enforcement
+│   └── scheduler-smoke-test.mjs   # Runs the engine headlessly and audits its output
 │
 ├── css/
-│   ├── tokens.css                 # Design tokens (CSS custom properties) — SSOT for design
-│   ├── theme-light.css            # Token values, light
-│   ├── theme-dark.css             # Token values, dark
-│   ├── base.css                   # Reset, typography, layout primitives
-│   ├── components.css             # Buttons, cards, inputs, tables, modals, toasts
-│   └── views.css                  # View-specific layout (dashboard, grid, editors)
+│   ├── tokens.css                 # Structural tokens — spacing, radius, type, motion, z-index
+│   ├── theme-light.css            # Colour token values, light
+│   ├── theme-dark.css             # Colour token values, dark
+│   ├── base.css                   # Reset, typography, app-shell grid, print styles
+│   ├── components.css             # Buttons, cards, fields, tables, modals, toasts, chips
+│   └── views.css                  # Screen-specific layout (dashboard, timetable grid, …)
 │
-├── vendor/                        # Vendored 3rd-party libs (no CDN — offline-safe)
+├── vendor/                        # Committed, not CDN — the app must work offline
 │   ├── xlsx.full.min.js           # SheetJS — Excel import/export
 │   ├── jspdf.umd.min.js           # jsPDF — PDF export
-│   └── jspdf.plugin.autotable.js
+│   └── jspdf.plugin.autotable.min.js
 │
-├── data/                          # Seed JSON shipped with the app (read-only)
+├── data/                          # Read-only seed JSON shipped with the build
 │   ├── settings.seed.json
-│   ├── teachers.seed.json
 │   ├── classes.seed.json
 │   ├── subjects.seed.json
+│   ├── teachers.seed.json
 │   └── curriculum.seed.json
 │
 └── js/
     ├── main.js                    # Composition root — the ONLY place that `new`s things
     │
-    ├── core/                      # Framework-agnostic primitives (no domain knowledge)
-    │   ├── EventBus.js            # Pub/sub
-    │   ├── Result.js              # Ok/Err result type — no exceptions for expected failures
-    │   ├── Entity.js              # Base: id, equality, toJSON/fromJSON contract
-    │   ├── Registry.js            # Generic keyed collection with O(1) lookup
-    │   └── Command.js             # ICommand base for undo/redo
+    ├── core/                      # Framework-agnostic primitives; no domain knowledge
+    │   ├── EventBus.js            # Observer pattern; injected, never a global
+    │   ├── Result.js              # Ok/Err — expected failures are values, not exceptions
+    │   ├── Entity.js              # Identity, serialisation and validation contracts
+    │   ├── Registry.js            # Insertion-ordered, id-keyed, O(1) lookup
+    │   └── Command.js             # Undoable-operation base
     │
-    ├── domain/                    # Pure business objects. No DOM. No storage. No async.
+    ├── domain/                    # Pure business objects. No DOM, no storage, no async.
+    │   ├── Settings.js            # School day config + constraint weights
+    │   ├── TimeSlot.js            # One period on one day (derived, never persisted)
+    │   ├── TimeGrid.js            # Settings → the week; owns all grid time arithmetic
     │   ├── Teacher.js
     │   ├── SchoolClass.js
-    │   ├── Subject.js
-    │   ├── CurriculumEntry.js     # Subject × Class offering (see §2)
-    │   ├── TimeSlot.js
-    │   ├── TimeGrid.js            # Builds slots from settings
-    │   ├── Lesson.js              # One placed period
-    │   ├── Timetable.js           # One immutable generated version
-    │   └── SchoolData.js          # Aggregate root: the whole dataset
+    │   ├── Subject.js             # Catalogue only — see §2.1
+    │   ├── CurriculumEntry.js     # Subject × Class offering — the scheduler's real input
+    │   ├── Lesson.js              # One placed period (value object)
+    │   ├── Timetable.js           # One generated version + its report
+    │   └── SchoolData.js          # Aggregate root; holds Registries, not Repositories
     │
-    ├── scheduling/
-    │   ├── SchedulingContext.js   # Read-only inputs handed to a strategy
-    │   ├── ScheduleState.js       # Mutable working grid + occupancy indexes
-    │   ├── LessonDemand.js        # An atomic unit of work to place
-    │   ├── CurriculumExpander.js  # CurriculumEntry[] → LessonDemand[]
-    │   ├── Scheduler.js           # Facade: picks strategy, runs pipeline, reports
-    │   ├── SchedulingReport.js    # Placed / unplaced / violations / score
+    ├── scheduling/                # No DOM anywhere — runs in Node in ~30ms
+    │   ├── Scheduler.js           # Facade: the subsystem's entire public surface
+    │   ├── SchedulingContext.js   # Immutable inputs + precomputed lookups
+    │   ├── ScheduleState.js       # Working grid with six O(1) occupancy indexes
+    │   ├── LessonDemand.js        # One atomic placement to make
+    │   ├── Placement.js           # Candidate: demand + slots + teacher
+    │   ├── CurriculumExpander.js  # Rows → demands, ordered hardest-first (MRV)
+    │   ├── SchedulingReport.js    # Coverage, shortfalls with reasons, quality breakdown
     │   ├── strategies/
-    │   │   ├── ISchedulingStrategy.js
+    │   │   ├── ISchedulingStrategy.js   # Shared candidate generation + diagnosis
     │   │   ├── GreedyHeuristicStrategy.js
     │   │   ├── BacktrackingStrategy.js
-    │   │   └── LocalSearchOptimizer.js
+    │   │   └── LocalSearchOptimizer.js  # Post-pass; not a strategy — see its header
     │   └── constraints/
-    │       ├── IConstraint.js         # hard: isSatisfied() → boolean
-    │       ├── ISoftConstraint.js     # soft: penalty() → number
+    │       ├── IConstraint.js           # Both interfaces: hard filters, soft ranks
     │       ├── ConstraintRegistry.js
-    │       ├── hard/
-    │       │   ├── TeacherClashConstraint.js
+    │       ├── DefaultConstraints.js    # THE file to edit when adding a rule
+    │       ├── hard/                    # Registered cheapest-first (short-circuiting)
     │       │   ├── ClassClashConstraint.js
+    │       │   ├── TeacherClashConstraint.js
+    │       │   ├── SubjectDailyCapConstraint.js
     │       │   ├── TeacherAvailabilityConstraint.js
     │       │   ├── TeacherDailyLoadConstraint.js
-    │       │   ├── TeacherWeeklyLoadConstraint.js
-    │       │   ├── SubjectDailyCapConstraint.js
-    │       │   └── RoomTypeConstraint.js      # lab needs a lab slot (future)
-    │       └── soft/
+    │       │   └── TeacherWeeklyLoadConstraint.js
+    │       └── soft/                    # Each maps to a weight slider in the UI
     │           ├── CorePeriodWindowConstraint.js
     │           ├── RecessSidePreferenceConstraint.js
+    │           ├── DifficultySpreadConstraint.js
+    │           ├── SubjectSpreadConstraint.js
     │           ├── TeacherGapConstraint.js
     │           ├── PreferredFreePeriodConstraint.js
-    │           ├── DifficultySpreadConstraint.js
-    │           └── SubjectSpreadConstraint.js
+    │           └── TeacherDailyBalanceConstraint.js
     │
     ├── data/
-    │   ├── IDataSource.js         # The seam a FastAPI backend will slot into
+    │   ├── IDataSource.js         # The seam a FastAPI backend slots into
     │   ├── LocalStorageDataSource.js
-    │   ├── SeedJsonDataSource.js
-    │   ├── RestDataSource.js.txt  # Skeleton, not wired — proves the seam works
-    │   ├── DataService.js         # Orchestrates hydrate → cache → persist
-    │   ├── SchemaMigrator.js      # Versioned migrations for stored payloads
+    │   ├── SeedJsonDataSource.js  # Read-only; consulted on first run only
+    │   ├── RestDataSource.js      # Working HTTP impl, NOT wired — proves §9
+    │   ├── DataService.js         # Owns the source-of-truth policy
+    │   ├── SchemaMigrator.js      # Versioned upgrades of stored payloads
     │   └── repositories/
-    │       ├── Repository.js      # Generic CRUD over a Registry + persistence hook
+    │       ├── Repository.js      # Generic CRUD + validation gate + persistence + events
     │       ├── TeacherRepository.js
     │       ├── ClassRepository.js
     │       ├── SubjectRepository.js
     │       ├── CurriculumRepository.js
-    │       └── TimetableRepository.js   # Versions: append-only
+    │       ├── TimetableRepository.js   # Append-only versioning lives here
+    │       └── SettingsRepository.js    # Singleton; deliberately not a Repository
     │
     ├── services/
-    │   ├── ValidationService.js   # Reuses the SAME constraints as the scheduler
+    │   ├── ValidationService.js   # Reuses the SAME registry as the scheduler
+    │   ├── TimetableEditor.js     # validate → command → history → persist
     │   ├── SearchService.js
-    │   ├── import/
-    │   │   ├── IImporter.js
-    │   │   ├── ExcelImporter.js
-    │   │   ├── JsonImporter.js
-    │   │   └── ImportMapper.js    # Sheet columns → domain, with row-level errors
-    │   └── export/
+    │   └── transfer/
+    │       ├── TransferService.js # Registry/factory for every import and export
     │       ├── IExporter.js
+    │       ├── WorkbookSchema.js  # Shared by importer AND exporter — round-trip safety
     │       ├── ExcelExporter.js
+    │       ├── ExcelImporter.js
     │       ├── PdfExporter.js
-    │       ├── JsonExporter.js
-    │       └── ExporterFactory.js
+    │       └── JsonTransfer.js    # Full-fidelity backup/restore
     │
     ├── managers/
+    │   ├── StorageManager.js      # Quota, private-browsing and corrupt-JSON handling
     │   ├── ThemeManager.js
-    │   ├── StorageManager.js      # Thin, safe localStorage wrapper (quota, JSON, prefix)
     │   ├── UndoRedoManager.js
-    │   └── ShortcutManager.js     # Ctrl+Z / Ctrl+Y / Ctrl+F, centralised
+    │   └── ShortcutManager.js     # One keydown listener for the whole app
     │
-    ├── commands/                  # Undoable mutations (Command pattern)
-    │   ├── MoveLessonCommand.js
-    │   ├── SwapLessonCommand.js
+    ├── commands/                  # Undoable timetable mutations
+    │   ├── MoveLessonCommand.js   # Single period or a whole block, one code path
+    │   ├── SwapLessonsCommand.js
     │   ├── AssignTeacherCommand.js
     │   ├── ClearLessonCommand.js
-    │   └── EntityEditCommand.js   # Generic create/update/delete for teachers etc.
+    │   └── SetLessonCommand.js    # + ToggleLockCommand (pinning)
     │
-    ├── ui/
-    │   ├── Router.js              # Hash router (#/dashboard, #/teachers …)
-    │   ├── View.js                # Base view: mount/unmount/render lifecycle
-    │   ├── components/            # Reusable, dumb, presentational
-    │   │   ├── Modal.js
-    │   │   ├── DataTable.js
-    │   │   ├── Toast.js
-    │   │   ├── SearchBox.js
-    │   │   ├── FormField.js
-    │   │   ├── SlotPicker.js      # Grid for unavailable/preferred periods
-    │   │   └── HelpHint.js        # The low-contrast "what this does" explainer
+    ├── ui/                        # The only layer that touches the DOM
+    │   ├── AppContext.js          # The injected service bundle
+    │   ├── AppShell.js            # Nav, theme toggle, status bar, undo/redo
+    │   ├── Router.js              # Hash routing (Pages-safe); owns view lifecycle
+    │   ├── View.js                # Base: render/mount/unmount + automatic teardown
+    │   ├── components/
+    │   │   ├── Modal.js           # ModalHost: focus trap, Escape, confirm(), prompt()
+    │   │   ├── Toaster.js
+    │   │   ├── DataTable.js       # Sortable, delegated row actions
+    │   │   ├── FormField.js       # Fields + the inline help-hint system
+    │   │   ├── SlotPicker.js      # Week grid for unavailable / preferred-free
+    │   │   └── SearchBox.js
     │   └── views/
+    │       ├── EntityListView.js  # Template Method base for the four CRUD screens
     │       ├── DashboardView.js
     │       ├── TeacherView.js
     │       ├── ClassView.js
@@ -181,18 +193,29 @@ ChronoSched/
     │       ├── CurriculumView.js
     │       ├── TimeConfigView.js
     │       ├── GenerateView.js
-    │       ├── TimetableView.js   # Grid + drag/drop + filters (class / teacher)
-    │       ├── VersionCompareView.js
+    │       ├── TimetableView.js   # Grid, drag/drop, versions, compare, export
     │       └── SettingsView.js
     │
     └── utils/
-        ├── Constants.js           # Enums, keys, defaults — zero magic numbers elsewhere
-        ├── TimeUtils.js           # "08:00" ↔ minutes, slot generation
-        ├── DomUtils.js            # el(), clear(), delegate()
+        ├── Constants.js           # Enums, keys, routes, limits — no magic values elsewhere
+        ├── TimeUtils.js
+        ├── DomUtils.js            # el(), delegate(), fragment() — the whole "framework"
         ├── ArrayUtils.js
         ├── IdGenerator.js
         └── Logger.js
 ```
+
+### Where the build diverged from this plan, and why
+
+| Planned | Shipped | Reason |
+| --- | --- | --- |
+| `services/import/` + `services/export/` | one `services/transfer/` | Importer and exporter must share `WorkbookSchema.js` or an exported file cannot be re-imported. Splitting them across two folders hid that dependency. |
+| `components/HelpHint.js` | folded into `FormField.js` | Every hint is attached to a field. A separate module meant a caller could build a field and forget the hint — the exact requirement most at risk of being skipped. |
+| `views/VersionCompareView.js` | folded into `TimetableView` | Comparison needs the same version list and slot labels. As a route it duplicated both; as a dialog it reuses them. |
+| `commands/EntityEditCommand.js` | not built | Ctrl+Z on the timetable is expected; Ctrl+Z silently resurrecting a deleted teacher is not. Entity edits go through repositories with confirmation instead, and the delete dialog says so. |
+| `constraints/hard/RoomTypeConstraint.js` | not built | Rooms are not in the data model yet. Adding it later is one file plus one line — which is the point of the registry. |
+| — | `+ TeacherDailyBalanceConstraint` | Without it, an unpinned subject piles onto whichever teacher was checked first. |
+| — | `+ SettingsRepository`, `+ TimetableEditor`, `+ EntityListView`, `+ AppContext`, `+ AppShell` | Emerged from the build; each is documented in its own header. |
 
 ### Why this differs from the sketch in the brief
 
@@ -446,7 +469,16 @@ classDiagram
 
 ## 4. JSON Schema
 
-Two distinct shapes. Do not confuse them.
+
+Every payload — seed file and stored value alike — uses the same envelope:
+
+```jsonc
+{ "schemaVersion": 1, "data": <object | array> }
+```
+
+One shape everywhere means `SchemaMigrator` has exactly one thing to understand,
+and a hand-edited file cannot half-match the format. The migrator also accepts a
+bare object or array without the envelope, because people do hand-edit these.
 
 ### 4.1 Seed files (`data/*.seed.json`) — shipped, read-only
 
@@ -454,23 +486,26 @@ Two distinct shapes. Do not confuse them.
 // data/settings.seed.json
 {
   "schemaVersion": 1,
-  "school": { "name": "Demo Public School", "academicYear": "2026-27" },
-  "workingDays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-  "dayStart": "08:00",
-  "periodDurationMinutes": 40,
-  "periodCount": 8,
-  "breaks": [
-    { "afterPeriod": 4, "label": "Recess", "durationMinutes": 20, "isRecess": true },
-    { "afterPeriod": 6, "label": "Short Break", "durationMinutes": 5, "isRecess": false }
-  ],
-  "corePeriodWindow": { "from": 1, "to": 6 },
-  "constraintWeights": {
-    "corePeriodWindow": 10,
-    "recessSidePreference": 6,
-    "teacherGap": 4,
-    "preferredFreePeriod": 3,
-    "difficultySpread": 5,
-    "subjectSpread": 5
+  "data": {
+    "school": { "name": "Springfield Public School", "academicYear": "2026-27" },
+    "workingDays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "dayStart": "08:00",
+    "periodDurationMinutes": 40,
+    "periodCount": 8,
+    "breaks": [
+      { "afterPeriod": 4, "label": "Recess",      "durationMinutes": 20, "isRecess": true  },
+      { "afterPeriod": 6, "label": "Short Break", "durationMinutes": 10, "isRecess": false }
+    ],
+    "corePeriodWindow": { "from": 1, "to": 6 },
+    "constraintWeights": {
+      "corePeriodWindow": 10,
+      "recessSidePreference": 6,
+      "teacherGap": 4,
+      "preferredFreePeriod": 3,
+      "difficultySpread": 5,
+      "subjectSpread": 5,
+      "teacherDailyBalance": 2
+    }
   }
 }
 ```
@@ -479,58 +514,66 @@ Two distinct shapes. Do not confuse them.
 // data/teachers.seed.json
 {
   "schemaVersion": 1,
-  "items": [
+  "data": [
     {
-      "id": "tch_001",
-      "employeeId": "EMP-1042",
-      "name": "A. Sharma",
-      "subjectIds": ["sub_math", "sub_phy"],
-      "classIds": ["cls_10a", "cls_10b"],
-      "maxPeriodsPerDay": 5,
-      "maxPeriodsPerWeek": 26,
+      "id": "tch_eng1",
+      "employeeId": "EMP-1001",
+      "name": "Anita Sharma",
+      "subjectIds": ["sub_eng"],
+      "classIds": [],                                          // empty = any class
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 28,
       "unavailableSlots":   [{ "dayIndex": 5, "periodIndex": null }],  // null = whole day
-      "preferredFreeSlots": [{ "dayIndex": 2, "periodIndex": 7 }]
+      "preferredFreeSlots": []
     }
   ]
 }
 ```
 
 ```jsonc
-// data/curriculum.seed.json
+// data/curriculum.seed.json — the scheduler's actual input
 {
   "schemaVersion": 1,
-  "items": [
+  "data": [
     {
-      "id": "cur_10a_math",
+      "id": "cur_10a_mat",
       "classId": "cls_10a",
-      "subjectId": "sub_math",
-      "teacherId": "tch_001",
-      "periodsPerWeek": 6,
-      "maxPerDay": 1,
+      "subjectId": "sub_mat",
+      "teacherId": "tch_mat1",        // null asks the scheduler to choose
+      "periodsPerWeek": 7,
+      "maxPerDay": 2,                 // HARD: 7/week cannot fit 6 days at 1/day
       "priority": "CORE",
       "recessPreference": "BEFORE",
       "requiresConsecutive": false,
       "consecutiveBlock": 1
     },
     {
-      "id": "cur_10a_physlab",
-      "classId": "cls_10a",
-      "subjectId": "sub_phy_lab",
-      "teacherId": null,
-      "periodsPerWeek": 4,
+      "id": "cur_11a_phl",
+      "classId": "cls_11a",
+      "subjectId": "sub_phl",
+      "teacherId": "tch_phy1",
+      "periodsPerWeek": 2,
       "maxPerDay": 2,
-      "priority": "CORE",
+      "priority": "ELECTIVE",
       "recessPreference": "AFTER",
       "requiresConsecutive": true,
-      "consecutiveBlock": 2
+      "consecutiveBlock": 2           // one double period, never split
     }
   ]
 }
 ```
 
+`data/classes.seed.json` and `data/subjects.seed.json` follow the same
+`{ schemaVersion, data: [...] }` shape, holding the fields listed in §2.2.
+
+The bundled demo school is generated and load-checked rather than hand-written:
+`tools/scheduler-smoke-test.mjs` fails if any class is over capacity, any
+teacher is over their cap, or any subject cannot fit at its declared daily
+maximum.
+
 ### 4.2 Persisted state (LocalStorage) — the live store
 
-One key per aggregate, all prefixed, all versioned:
+One key per aggregate, all prefixed, all carrying the same envelope:
 
 ```
 chronosched:v1:settings
@@ -538,11 +581,19 @@ chronosched:v1:teachers
 chronosched:v1:classes
 chronosched:v1:subjects
 chronosched:v1:curriculum
-chronosched:v1:timetables      → { schemaVersion, nextVersion, items: Timetable[] }
-chronosched:v1:preferences     → { theme: "dark", lastView: "#/dashboard" }
+chronosched:v1:timetables      → data: Timetable[] (each with its report)
+chronosched:v1:preferences     → data: { theme, activeTimetableId }
 ```
 
-**`schemaVersion` on every payload is not optional.** The moment this app is used for a real term, deleting a user's data because the model changed is unacceptable. `SchemaMigrator` holds an ordered list of `{from, to, migrate(payload)}` functions and runs them on load. This costs ~30 lines now and saves the project later.
+Splitting by aggregate rather than storing one blob means editing a teacher does
+not rewrite the entire timetable history on every keystroke.
+
+**`schemaVersion` on every payload is not optional.** Once this app holds a real
+term's timetable, "the data model changed so we cleared your storage" stops
+being acceptable. `SchemaMigrator` holds an ordered list of
+`{ from, to, migrate(data, key) }` steps and runs them on load. The list is
+empty at v1 — the seam is the point, not the contents — and it costs about
+thirty lines today against a data-loss incident later.
 
 ### 4.3 Source-of-truth policy
 
@@ -727,24 +778,51 @@ Styled via `--text-muted` at `0.8125rem` — present when scanned for, invisible
 
 ---
 
-## 7. Implementation Order
+## 7. Build Order and Verification
 
-Each step is independently runnable and verifiable. No step depends on a later one.
+Each module was built and verified before the next began, so no step depended on
+one that did not yet work.
 
-| # | Module | Delivers |
-|---|---|---|
-| 1 | `core/` + `utils/` + `index.html` shell + CSS tokens/themes | App boots, theme toggles and persists |
-| 2 | `domain/` entities + `TimeGrid` | Models + validation, unit-testable |
-| 3 | `data/` — StorageManager, DataService, repositories, seeds, migrator | Data loads, survives refresh |
-| 4 | `ui/` shell — Router, View base, components, Dashboard | Navigation + live counts |
-| 5 | Teacher / Class / Subject / Curriculum CRUD views | Full data entry, search |
-| 6 | Time Configuration view | Editable periods, recess, day start |
-| 7 | `scheduling/` — constraints, state, expander, greedy strategy | First real timetable |
-| 8 | Backtracking + local search + report UI | Quality timetables + diagnostics |
-| 9 | Timetable view: render, filters, versions, compare, delete | Viewing & version management |
-| 10 | Drag/drop + ValidationService + commands + UndoRedoManager | Manual editing with Ctrl+Z/Y |
-| 11 | Import/Export — Excel, JSON, PDF | Interop |
-| 12 | Responsive pass, HelpHints, a11y, GitHub Pages deploy | Ship |
+| # | Module | Verified by |
+| --- | --- | --- |
+| 1 | `core/` + `utils/` + shell + CSS tokens/themes | App boots; theme persists across reload |
+| 2 | `domain/` entities + `TimeGrid` | Entity validation; grid geometry |
+| 3 | `data/` — storage, sources, repositories, migrator, seeds | Seed generator asserts the demo school is feasible |
+| 4 | `scheduling/` — constraints, state, expander, strategies | `scheduler-smoke-test.mjs`, headless |
+| 5 | `services/`, `managers/`, `commands/` | Exercised through the UI end-to-end run |
+| 6 | `ui/` — router, components, nine views | Browser end-to-end: every route mounts |
+| 7 | `main.js` composition root | App starts with zero console errors |
+| 8 | GitHub Pages deployment | CI runs steps 3–4 before publishing |
+
+### What the checks actually assert
+
+`npm run verify` — 100 modules parsed; every relative import resolves; every
+named binding exists in its target module; no layering edge is crossed.
+
+`npm run test:scheduler` — on the bundled demo school (6 classes, 220 periods a
+week), independently re-auditing the produced grid rather than trusting the
+solver's own indexes:
+
+```text
+placed                              220/220 (100%)
+core periods inside window 1–6      176/176 (100%)
+hard-constraint violations          0
+time                                32 ms
+reproducible with a fixed seed      yes
+different output with a new seed    yes
+```
+
+An over-subscribed variant (every teacher capped at 6 periods a week) returns
+110/220 in 1.1s with a per-row reason — it degrades and reports rather than
+hanging or silently dropping periods.
+
+A browser run through the DevTools Protocol additionally confirmed: all nine
+routes mount; generation from a real button click places 220/220; the grid
+renders 48 cells with 2 break rows; a drag marks 30 legal and 18 illegal targets
+before the pointer moves; a real drop moves the lesson and Ctrl+Z restores it;
+an illegal drop is refused with a message; regeneration produces a second
+version without touching the first; theme and data survive a reload; and no
+console errors occur throughout.
 
 ---
 

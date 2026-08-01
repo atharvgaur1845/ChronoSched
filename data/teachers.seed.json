@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 1,
+  "data": [
+    {
+      "id": "tch_eng1",
+      "name": "Anita Sharma",
+      "employeeId": "EMP-1001",
+      "subjectIds": [
+        "sub_eng"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 28,
+      "unavailableSlots": [
+        {
+          "dayIndex": 5,
+          "periodIndex": null
+        }
+      ],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_eng2",
+      "name": "Rahul Menon",
+      "employeeId": "EMP-1002",
+      "subjectIds": [
+        "sub_eng"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 28,
+      "unavailableSlots": [],
+      "preferredFreeSlots": [
+        {
+          "dayIndex": 2,
+          "periodIndex": 7
+        }
+      ]
+    },
+    {
+      "id": "tch_hin1",
+      "name": "Kavita Joshi",
+      "employeeId": "EMP-1003",
+      "subjectIds": [
+        "sub_hin"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 5,
+      "maxPeriodsPerWeek": 24,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_mat1",
+      "name": "Suresh Iyer",
+      "employeeId": "EMP-1004",
+      "subjectIds": [
+        "sub_mat"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 28,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_mat2",
+      "name": "Priya Nair",
+      "employeeId": "EMP-1005",
+      "subjectIds": [
+        "sub_mat",
+        "sub_phy"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 28,
+      "unavailableSlots": [
+        {
+          "dayIndex": 0,
+          "periodIndex": 0
+        }
+      ],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_mat3",
+      "name": "Deepak Rao",
+      "employeeId": "EMP-1006",
+      "subjectIds": [
+        "sub_mat",
+        "sub_eco"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 26,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_sci1",
+      "name": "Meera Das",
+      "employeeId": "EMP-1007",
+      "subjectIds": [
+        "sub_sci"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 26,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_sst1",
+      "name": "Vikram Singh",
+      "employeeId": "EMP-1008",
+      "subjectIds": [
+        "sub_sst"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 26,
+      "unavailableSlots": [],
+      "preferredFreeSlots": [
+        {
+          "dayIndex": 4,
+          "periodIndex": 7
+        }
+      ]
+    },
+    {
+      "id": "tch_cs1",
+      "name": "Neha Gupta",
+      "employeeId": "EMP-1009",
+      "subjectIds": [
+        "sub_cs",
+        "sub_csl"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 26,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_phy1",
+      "name": "Arjun Pillai",
+      "employeeId": "EMP-1010",
+      "subjectIds": [
+        "sub_phy",
+        "sub_phl"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 28,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_che1",
+      "name": "Sunita Bose",
+      "employeeId": "EMP-1011",
+      "subjectIds": [
+        "sub_che",
+        "sub_chl"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 28,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_bio1",
+      "name": "Ramesh Kulkarni",
+      "employeeId": "EMP-1012",
+      "subjectIds": [
+        "sub_bio",
+        "sub_bil"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 26,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_acc1",
+      "name": "Farhan Khan",
+      "employeeId": "EMP-1013",
+      "subjectIds": [
+        "sub_acc"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 26,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_bst1",
+      "name": "Lakshmi Menon",
+      "employeeId": "EMP-1014",
+      "subjectIds": [
+        "sub_bst"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 24,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_eco1",
+      "name": "Ganesh Patil",
+      "employeeId": "EMP-1015",
+      "subjectIds": [
+        "sub_eco"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 24,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_pe1",
+      "name": "Rakesh Yadav",
+      "employeeId": "EMP-1016",
+      "subjectIds": [
+        "sub_pe"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 6,
+      "maxPeriodsPerWeek": 24,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    },
+    {
+      "id": "tch_lib1",
+      "name": "Shalini Verma",
+      "employeeId": "EMP-1017",
+      "subjectIds": [
+        "sub_lib",
+        "sub_eng"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 5,
+      "maxPeriodsPerWeek": 20,
+      "unavailableSlots": [],
+      "preferredFreeSlots": []
+    }
+  ]
+}

@@ -160,8 +160,12 @@ export const LIMITS = Object.freeze({
   MAX_PERIODS: 14,
   MAX_UNDO_DEPTH: 100,
   MAX_TIMETABLE_VERSIONS: 50,
-  /** Backtracking node budget. Beyond this the solver degrades to best-effort. */
-  SOLVER_NODE_BUDGET: 250_000,
+  /**
+   * Backtracking node budget. Beyond this the branch factor collapses to 1 and
+   * the solver finishes greedily. Sized so a hard instance still returns in
+   * well under a second on a modest laptop.
+   */
+  SOLVER_NODE_BUDGET: 20_000,
   /** Local-search improvement passes. */
   OPTIMIZER_ITERATIONS: 4_000,
   SEARCH_RESULT_LIMIT: 8,
