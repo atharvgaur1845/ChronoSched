@@ -1,0 +1,80 @@
+/**
+ * tokens.css — Structural design tokens.
+ *
+ * Single source of truth for spacing, radius, typography, motion and elevation.
+ * COLOUR tokens deliberately live in theme-light.css / theme-dark.css so that
+ * adding a third theme means adding one file, not editing this one (OCP).
+ *
+ * Rule: no component stylesheet may hard-code a px value that a token covers.
+ */
+
+:root {
+  /* ---- Spacing scale (4px base, Material-derived) ---------------------- */
+  --space-0: 0;
+  --space-1: 0.25rem;   /*  4px */
+  --space-2: 0.5rem;    /*  8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.5rem;    /* 24px */
+  --space-6: 2rem;      /* 32px */
+  --space-7: 3rem;      /* 48px */
+
+  /* ---- Radius ---------------------------------------------------------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-xs: 0.6875rem;  /* 11px — grid cell meta */
+  --text-sm: 0.8125rem;  /* 13px — help hints, table meta */
+  --text-md: 0.9375rem;  /* 15px — body */
+  --text-lg: 1.125rem;   /* 18px — section titles */
+  --text-xl: 1.5rem;     /* 24px — view titles */
+  --text-2xl: 2.25rem;   /* 36px — dashboard stat numbers */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
+
+  /* ---- Layout ---------------------------------------------------------- */
+  --nav-width: 216px;
+  --app-bar-height: 56px;
+  --status-bar-height: 40px;
+  --content-max-width: 1400px;
+
+  /* ---- Motion ---------------------------------------------------------- */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+
+  /* ---- Z-index scale (never write a bare z-index anywhere else) -------- */
+  --z-sticky: 100;
+  --z-appbar: 200;
+  --z-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+  /* ---- Subject colour slots -------------------------------------------
+     Referenced by Subject.colorToken so subject colours stay theme-aware.
+     Actual values are supplied per theme. ------------------------------- */
+  --subject-count: 10;
+}
+
+/* Honour the OS reduced-motion setting — accessibility, not decoration. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
+}

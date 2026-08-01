@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="ChronoSched — offline school timetable generator. Runs entirely in your browser.">
+  <meta name="color-scheme" content="light dark">
+  <title>ChronoSched — School Timetable Generator</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9200;</text></svg>">
+
+  <link rel="stylesheet" href="./css/tokens.css">
+  <link rel="stylesheet" href="./css/theme-light.css">
+  <link rel="stylesheet" href="./css/theme-dark.css">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/views.css">
+
+  <!--
+    Applied before first paint so a dark-mode user never sees a white flash.
+    This is the only inline script in the app; ThemeManager owns everything after boot.
+  -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('chronosched:v1:preferences');
+        var theme = stored ? (JSON.parse(stored) || {}).theme : null;
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { /* storage blocked — the light default in the markup stands */ }
+    })();
+  </script>
+</head>
+
+<body>
+  <a class="skip-link" href="#view-outlet">Skip to main content</a>
+
+  <div id="app-shell" class="app-shell">
+
+    <header class="app-bar">
+      <button id="nav-toggle" class="icon-button app-bar__menu" aria-label="Toggle navigation" aria-expanded="false">
+        <span aria-hidden="true">&#9776;</span>
+      </button>
+
+      <a class="app-bar__brand" href="#/dashboard">
+        <span class="app-bar__logo" aria-hidden="true">&#9200;</span>
+        <span class="app-bar__title">ChronoSched</span>
+      </a>
+
+      <div class="app-bar__search" id="global-search-mount"></div>
+
+      <div class="app-bar__actions">
+        <button id="theme-toggle" class="icon-button" aria-label="Switch theme" title="Switch light / dark theme">
+          <span class="theme-toggle__icon" aria-hidden="true"></span>
+        </button>
+      </div>
+    </header>
+
+    <nav id="app-nav" class="app-nav" aria-label="Main navigation"></nav>
+
+    <main id="view-outlet" class="view-outlet" tabindex="-1"></main>
+
+    <footer class="app-status">
+      <div class="app-status__group">
+        <button id="undo-button" class="text-button" disabled title="Undo (Ctrl+Z)">
+          <span aria-hidden="true">&#8630;</span> Undo
+        </button>
+        <button id="redo-button" class="text-button" disabled title="Redo (Ctrl+Y)">
+          <span aria-hidden="true">&#8631;</span> Redo
+        </button>
+      </div>
+      <div class="app-status__group app-status__spacer">
+        <span id="status-message" class="app-status__message">Ready</span>
+      </div>
+      <div class="app-status__group">
+        <span id="status-storage" class="app-status__meta">Saved locally</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <div id="modal-root" class="modal-root"></div>
+  <div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <p style="padding:2rem;font-family:system-ui">
+      ChronoSched needs JavaScript enabled. All processing happens in your browser — nothing is sent anywhere.
+    </p>
+  </noscript>
+
+  <!-- Vendored, offline-safe. Loaded classically because both ship UMD builds. -->
+  <script src="./vendor/xlsx.full.min.js"></script>
+  <script src="./vendor/jspdf.umd.min.js"></script>
+  <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

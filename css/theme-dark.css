@@ -1,0 +1,71 @@
+/**
+ * theme-dark.css — Colour token values for the dark theme.
+ *
+ * Mirrors theme-light.css token-for-token. If a token exists in one file and
+ * not the other, one theme silently breaks — keep them in lockstep.
+ */
+
+:root[data-theme="dark"] {
+  /* Surfaces */
+  --surface-canvas:    #12151c;
+  --surface-raised:    #1a1f29;
+  --surface-sunken:    #0d1015;
+  --surface-overlay:   #202634;
+  --surface-inverse:   #eef1f7;
+  --scrim:             rgba(0, 0, 0, 0.62);
+
+  /* Text */
+  --text-primary:      #e7eaf1;
+  --text-secondary:    #a8b1c2;
+  --text-muted:        #78829a;
+  --text-inverse:      #12151c;
+  --text-on-accent:    #ffffff;
+
+  /* Lines */
+  --border-subtle:     #2a3140;
+  --border-strong:     #3b4457;
+  --border-focus:      #8aa4ff;
+
+  /* Brand / accent */
+  --accent:            #7d9bff;
+  --accent-hover:      #93acff;
+  --accent-active:     #b0c2ff;
+  --accent-soft:       #22304f;
+  --accent-soft-text:  #b7c8ff;
+
+  /* Semantic */
+  --success:           #5ed0a6;
+  --success-soft:      #16342a;
+  --warning:           #e6b45c;
+  --warning-soft:      #3a2e14;
+  --danger:            #f28b82;
+  --danger-soft:       #3d1f1d;
+  --info:              #6fc7e8;
+  --info-soft:         #143039;
+
+  /* Timetable grid */
+  --grid-line:         #2c3342;
+  --grid-header-bg:    #212836;
+  --grid-recess-bg:    #191e28;
+  --grid-empty-bg:     #161b23;
+  --grid-drop-valid:   #1d3f31;
+  --grid-drop-invalid: #45211f;
+  --grid-locked-mark:  #e6b45c;
+
+  /* Elevation — dark UIs read depth from lighter surfaces, not heavy shadow */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --elevation-2: 0 2px 6px rgba(0, 0, 0, 0.46);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.55);
+
+  /* Subject palette — desaturated fills, bright text */
+  --subject-1:  #24365e;  --subject-1-text:  #bed0ff;
+  --subject-2:  #1e4136;  --subject-2-text:  #a9e6cd;
+  --subject-3:  #4a3320;  --subject-3-text:  #f4c69a;
+  --subject-4:  #3e2a4c;  --subject-4-text:  #dcb6ec;
+  --subject-5:  #1d3d47;  --subject-5-text:  #a4dcea;
+  --subject-6:  #4a2431;  --subject-6-text:  #f2b3c4;
+  --subject-7:  #3f3f22;  --subject-7-text:  #e2e2a6;
+  --subject-8:  #2a2e56;  --subject-8-text:  #c0c4f2;
+  --subject-9:  #204030;  --subject-9-text:  #a9e2bb;
+  --subject-10: #46331d;  --subject-10-text: #eec89a;
+}

@@ -1,0 +1,71 @@
+/**
+ * theme-light.css — Colour token values for the light theme.
+ *
+ * Scoped to [data-theme="light"] which ThemeManager stamps on <html>.
+ * Adding a theme = adding a file with the same token names. No other file changes.
+ */
+
+:root[data-theme="light"] {
+  /* Surfaces */
+  --surface-canvas:    #f4f6fa;
+  --surface-raised:    #ffffff;
+  --surface-sunken:    #eceff5;
+  --surface-overlay:   #ffffff;
+  --surface-inverse:   #1f2430;
+  --scrim:             rgba(17, 21, 28, 0.45);
+
+  /* Text */
+  --text-primary:      #171c26;
+  --text-secondary:    #4c5566;
+  --text-muted:        #7b8496;
+  --text-inverse:      #ffffff;
+  --text-on-accent:    #ffffff;
+
+  /* Lines */
+  --border-subtle:     #e2e6ee;
+  --border-strong:     #c9d0dc;
+  --border-focus:      #3355dd;
+
+  /* Brand / accent */
+  --accent:            #3355dd;
+  --accent-hover:      #2a47c2;
+  --accent-active:     #21399e;
+  --accent-soft:       #e8ecfd;
+  --accent-soft-text:  #24379c;
+
+  /* Semantic */
+  --success:           #17795e;
+  --success-soft:      #e0f4ee;
+  --warning:           #9a6407;
+  --warning-soft:      #fdf0d9;
+  --danger:            #b3261e;
+  --danger-soft:       #fdeceb;
+  --info:              #0b6a91;
+  --info-soft:         #e2f2f9;
+
+  /* Timetable grid */
+  --grid-line:         #dfe4ed;
+  --grid-header-bg:    #eef1f7;
+  --grid-recess-bg:    #e6e9f0;
+  --grid-empty-bg:     #fafbfd;
+  --grid-drop-valid:   #d6f2e5;
+  --grid-drop-invalid: #fbdedc;
+  --grid-locked-mark:  #9a6407;
+
+  /* Elevation */
+  --elevation-1: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.10);
+  --elevation-2: 0 2px 4px rgba(16, 24, 40, 0.06), 0 4px 8px rgba(16, 24, 40, 0.08);
+  --elevation-3: 0 4px 8px rgba(16, 24, 40, 0.08), 0 12px 24px rgba(16, 24, 40, 0.12);
+
+  /* Subject palette — chosen for distinguishability, WCAG AA text on top */
+  --subject-1:  #dbe7ff;  --subject-1-text:  #16367a;
+  --subject-2:  #dcf3e4;  --subject-2-text:  #14563a;
+  --subject-3:  #fde7d6;  --subject-3-text:  #7a3d0c;
+  --subject-4:  #f2e0f7;  --subject-4-text:  #5c1f70;
+  --subject-5:  #d9f0f5;  --subject-5-text:  #0d4d5c;
+  --subject-6:  #fce3ea;  --subject-6-text:  #7d1f3c;
+  --subject-7:  #f0f0cf;  --subject-7-text:  #4a4a15;
+  --subject-8:  #e2e4f8;  --subject-8-text:  #2c3070;
+  --subject-9:  #d7f0dd;  --subject-9-text:  #17532c;
+  --subject-10: #f7e5cf;  --subject-10-text: #6b3f0b;
+}
