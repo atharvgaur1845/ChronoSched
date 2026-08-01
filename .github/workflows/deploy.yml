@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # No dependencies to install: the app has none, and the two vendored
       # libraries are committed. `npm ci` would fail on a missing lockfile.
@@ -53,7 +53,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `enablement: true` turns Pages on via the API if it has never been
+      # enabled, instead of failing with "Get Pages site failed / Not Found".
+      # Without it the very first run of this workflow on a fresh repository
+      # always errors until someone visits Settings → Pages by hand.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       # The whole repository is uploaded. Everything the app needs at runtime —
       # index.html, css/, js/, data/, vendor/ — is tracked, so there is nothing

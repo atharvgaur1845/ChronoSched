@@ -22,9 +22,15 @@ Any static server works — `npx serve`, `php -S localhost:8000`, VS Code's Live
 
 ## Deploy to GitHub Pages
 
-1. Push this repository to GitHub.
-2. **Settings → Pages → Source → GitHub Actions**.
-3. Push to `main`. The workflow in [.github/workflows/deploy.yml](.github/workflows/deploy.yml) verifies the code, then publishes.
+Push this repository to GitHub with `main` as the default branch. The workflow in [.github/workflows/deploy.yml](.github/workflows/deploy.yml) verifies the code, then publishes — it passes `enablement: true` to `configure-pages`, so it switches Pages on itself rather than failing on a fresh repository.
+
+The site appears at `https://<user>.github.io/<repo>/`.
+
+**If the first run fails with `Get Pages site failed … Not Found`,** the workflow could not enable Pages for you. Set it manually — **Settings → Pages → Source → GitHub Actions** — and re-run the job. That happens when:
+
+- the repository is **private on a Free plan** (Pages needs Pro or above for private repos), or
+- an organisation policy restricts who may enable Pages, or
+- `Settings → Actions → General → Workflow permissions` is set to read-only, which strips the `pages: write` permission the workflow requests.
 
 Three details that break static ES-module sites on Pages, all already handled here:
 
