@@ -14,7 +14,7 @@
 
 import { Entity } from '../core/Entity.js';
 import { Result } from '../core/Result.js';
-import { Priority, RecessSide, PRIORITY_RANK } from '../utils/Constants.js';
+import { Priority, RecessSide, Spread, PRIORITY_RANK } from '../utils/Constants.js';
 
 export class CurriculumEntry extends Entity {
   /**
@@ -27,12 +27,13 @@ export class CurriculumEntry extends Entity {
    * @param {number} [data.maxPerDay]           Cap for one day. HARD constraint.
    * @param {string} [data.priority]            One of {@link Priority}.
    * @param {string} [data.recessPreference]    One of {@link RecessSide}.
+   * @param {string} [data.spread]              One of {@link Spread}.
    * @param {boolean} [data.requiresConsecutive]
    * @param {number} [data.consecutiveBlock]    Periods per block when consecutive.
    */
   constructor({
     id, classId, subjectId, teacherId,
-    periodsPerWeek, maxPerDay, priority, recessPreference,
+    periodsPerWeek, maxPerDay, priority, recessPreference, spread,
     requiresConsecutive, consecutiveBlock,
   }) {
     super(id);
@@ -51,6 +52,13 @@ export class CurriculumEntry extends Entity {
     this.priority = priority ?? Priority.CORE;
     /** @type {string} */
     this.recessPreference = recessPreference ?? RecessSide.ANY;
+    /**
+     * @type {string}
+     * Defaults to SPREAD_OUT because it is the safe answer at both extremes:
+     * for a once-a-week subject it separates the periods, and for a daily one
+     * the ideal gap collapses to 1, which simply discourages doubling up.
+     */
+    this.spread = spread ?? Spread.SPREAD_OUT;
     /** @type {boolean} */
     this.requiresConsecutive = Boolean(requiresConsecutive);
     /** @type {number} */
@@ -124,6 +132,12 @@ export class CurriculumEntry extends Entity {
     if (!Object.values(RecessSide).includes(this.recessPreference)) {
       errors.push(`Unknown recess preference "${this.recessPreference}".`);
     }
+    if (!Object.values(Spread).includes(this.spread)) {
+      errors.push(`Unknown weekly distribution "${this.spread}".`);
+    }
+    if (this.spread === Spread.EVERY_DAY && this.requiresConsecutive) {
+      warnings.push('"Every day" and consecutive blocks pull in opposite directions. Consider "spread across the week" instead.');
+    }
 
     return errors.length > 0 ? Result.fail(errors, warnings) : Result.ok(this, warnings);
   }
@@ -139,8 +153,18 @@ export class CurriculumEntry extends Entity {
       maxPerDay: this.maxPerDay,
       priority: this.priority,
       recessPreference: this.recessPreference,
+      spread: this.spread,
       requiresConsecutive: this.requiresConsecutive,
       consecutiveBlock: this.consecutiveBlock,
     };
+  }
+
+  /**
+   * Whether this row can actually appear on every working day.
+   * @param {number} dayCount
+   * @returns {boolean}
+   */
+  canRunDaily(dayCount) {
+    return this.periodsPerWeek >= dayCount;
   }
 }

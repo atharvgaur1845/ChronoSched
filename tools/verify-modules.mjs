@@ -13,6 +13,10 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const JS_ROOT = join(ROOT, 'js');
@@ -128,11 +132,28 @@ for (const [file, module] of modules) {
   }
 }
 
+// ---- Syntax ----------------------------------------------------------------
+// Parse every file for real. The import/export analysis above is regex-based
+// and happily accepts code the engine will reject — a duplicate `const`, an
+// unbalanced brace — and in a no-build-step app that reaches the user as a
+// blank page, because one bad module takes the whole graph down. `node --check`
+// is the compiler this project otherwise does not have.
+await Promise.all(files.map(async (file) => {
+  try {
+    await execFileAsync(process.execPath, ['--check', file]);
+  } catch (error) {
+    const message = String(error.stderr ?? error.message)
+      .split('\n')
+      .find((line) => /Error|error:/.test(line)) ?? 'failed to parse';
+    problems.push(`SYNTAX — ${relative(ROOT, file)}: ${message.trim()}`);
+  }
+}));
+
 // ---- Report ---------------------------------------------------------------
 console.log(`Checked ${files.length} modules under js/`);
 
 if (problems.length === 0) {
-  console.log('OK — every import resolves, every named binding exists, layering is clean.');
+  console.log('OK — every module parses, every import resolves, every named binding exists, layering is clean.');
   process.exit(0);
 }
 

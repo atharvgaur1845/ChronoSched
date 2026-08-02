@@ -40,16 +40,21 @@ export class TransferService {
   }
 
   /**
-   * Export formats, with availability already resolved for the current state.
+   * Export formats, each with the reason it cannot run right now (or null).
+   *
+   * `blockedReason` rather than a boolean: the UI keeps the button live and
+   * says why on click, instead of presenting a disabled control that appears
+   * broken.
+   *
    * @param {object} payload
-   * @returns {Array<{id: string, label: string, description: string, available: boolean}>}
+   * @returns {Array<{id: string, label: string, description: string, blockedReason: string|null}>}
    */
   listExporters(payload) {
     return [...this._exporters.values()].map((exporter) => ({
       id: exporter.id,
       label: exporter.label,
       description: exporter.description,
-      available: exporter.isAvailable(payload),
+      blockedReason: exporter.unavailableReason(payload),
     }));
   }
 

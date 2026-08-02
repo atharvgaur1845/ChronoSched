@@ -53,6 +53,8 @@ export class CurriculumExpander {
         priority: entry.priority,
         priorityRank: entry.priorityRank,
         recessPreference: entry.recessPreference,
+        spread: entry.spread,
+        periodsPerWeek: entry.periodsPerWeek,
         difficulty: subject.difficulty,
         maxPerDay: entry.maxPerDay,
         isLab: subject.isLab,

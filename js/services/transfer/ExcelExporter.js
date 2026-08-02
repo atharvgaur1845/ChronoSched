@@ -34,6 +34,17 @@ export class ExcelExporter extends IExporter {
   }
 
   /**
+   * Unlike PDF, this one works with no timetable — the workbook is still a
+   * useful export of the school data on its own.
+   * @returns {string|null}
+   */
+  unavailableReason() {
+    return this.isAvailable()
+      ? null
+      : 'The spreadsheet library did not load. Use JSON export instead.';
+  }
+
+  /**
    * @param {object} payload
    * @param {import('../../domain/SchoolData.js').SchoolData} payload.schoolData
    * @param {import('../../domain/Timetable.js').Timetable|null} [payload.timetable]
@@ -82,6 +93,7 @@ export class ExcelExporter extends IExporter {
       subject: schoolData.subjects.get(entry.subjectId)?.name ?? entry.subjectId,
       teacher: entry.teacherId ? schoolData.teachers.get(entry.teacherId)?.name ?? '' : '',
       periodsPerWeek: entry.periodsPerWeek,
+      spread: entry.spread,
       maxPerDay: entry.maxPerDay,
       priority: entry.priority,
       recessPreference: entry.recessPreference,
@@ -101,7 +113,13 @@ export class ExcelExporter extends IExporter {
       : `${schoolData.settings.school.name}-data`;
 
     try {
-      XLSX.writeFile(book, this._filename(name), { compression: true });
+      // `XLSX.write` to an array + our own delivery, rather than
+      // `XLSX.writeFile`, so all three export formats share one download path.
+      const buffer = XLSX.write(book, { bookType: 'xlsx', type: 'array', compression: true });
+      this._deliver(
+        new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        this._filename(name),
+      );
     } catch (error) {
       log.error('Excel export failed.', error);
       return Result.fail(`Could not create the spreadsheet: ${error.message}`);

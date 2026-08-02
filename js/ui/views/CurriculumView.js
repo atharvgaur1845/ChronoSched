@@ -15,7 +15,7 @@ import { CurriculumEntry } from '../../domain/CurriculumEntry.js';
 import { selectField, numberField, checkboxField, helpHint } from '../components/FormField.js';
 import { el, replaceChildren } from '../../utils/DomUtils.js';
 import { createId } from '../../utils/IdGenerator.js';
-import { Events, Priority, RecessSide } from '../../utils/Constants.js';
+import { Events, Priority, RecessSide, Spread } from '../../utils/Constants.js';
 
 /** Plain-English option labels. */
 const PRIORITY_LABELS = {
@@ -28,6 +28,19 @@ const RECESS_LABELS = {
   [RecessSide.ANY]: 'Any time of day',
   [RecessSide.BEFORE]: 'Prefer before recess',
   [RecessSide.AFTER]: 'Prefer after recess',
+};
+
+const SPREAD_LABELS = {
+  [Spread.EVERY_DAY]: 'Every day — a lesson on each working day',
+  [Spread.SPREAD_OUT]: 'Spread across the week — keep the days apart',
+  [Spread.FLEXIBLE]: 'No preference — put them wherever fits best',
+};
+
+/** Short chip text for the table. */
+const SPREAD_CHIPS = {
+  [Spread.EVERY_DAY]: 'daily',
+  [Spread.SPREAD_OUT]: 'spread out',
+  [Spread.FLEXIBLE]: 'flexible',
 };
 
 export class CurriculumView extends EntityListView {
@@ -128,6 +141,21 @@ export class CurriculumView extends EntityListView {
         },
       },
       { key: 'periodsPerWeek', header: 'Per week', numeric: true },
+      {
+        key: 'spread',
+        header: 'How often',
+        render: (row) => {
+          const dayCount = this.schoolData.timeGrid.dayCount;
+          const impossible = row.spread === Spread.EVERY_DAY && !row.canRunDaily(dayCount);
+          return el('span', {
+            class: `chip ${impossible ? 'chip--warning' : row.spread === Spread.EVERY_DAY ? 'chip--accent' : ''}`,
+            text: impossible ? `daily — needs ${dayCount}/wk` : SPREAD_CHIPS[row.spread] ?? row.spread,
+            attrs: impossible
+              ? { title: `Set to every day but only has ${row.periodsPerWeek} periods a week, so it cannot reach all ${dayCount} days.` }
+              : {},
+          });
+        },
+      },
       { key: 'maxPerDay', header: 'Max/day', numeric: true },
       {
         key: 'priority',
@@ -255,7 +283,18 @@ export class CurriculumView extends EntityListView {
       min: 1,
       max: this.schoolData.timeGrid.slotCount,
       required: true,
-      help: `How many lessons of this subject the class gets each week. Example: 6 spreads across the ${dayCount} working days.`,
+      help: `How many lessons of this subject the class gets each week — you set the number. `
+        + `Example: Mathematics ${dayCount} or more for a daily subject; Computer Lab, Games or Art 1 or 2.`,
+    });
+
+    const spread = selectField({
+      label: 'How often across the week',
+      value: entity?.spread ?? Spread.SPREAD_OUT,
+      options: Object.values(Spread).map((value) => ({ value, label: SPREAD_LABELS[value] })),
+      help: `Controls WHEN the periods land, which "periods per week" alone does not. `
+        + `Example: Games with 2 periods a week set to "spread across the week" lands on Monday and Thursday, `
+        + `not Monday and Tuesday. Mathematics with ${dayCount + 1} periods set to "every day" appears once on `
+        + `each of the ${dayCount} days before doubling up anywhere.`,
     });
 
     const maxPerDay = numberField({
@@ -303,10 +342,21 @@ export class CurriculumView extends EntityListView {
     };
 
     for (const control of [classSelect.select, subjectSelect.select, teacherSelect.select,
-      periodsPerWeek.input, maxPerDay.input, blockSize.input]) {
+      periodsPerWeek.input, maxPerDay.input, blockSize.input, spread.select]) {
       control.addEventListener('change', () => this._refreshAdvisories(advisories));
     }
     consecutive.input.addEventListener('change', syncEnabled);
+
+    // Suggest the right distribution as soon as the frequency makes it obvious,
+    // so the common cases need no thought: a subject running as often as there
+    // are days is a daily one, anything less wants spreading out.
+    periodsPerWeek.input.addEventListener('input', () => {
+      if (entity || spread.select.dataset.touched === 'true') return;
+      const count = Number(periodsPerWeek.input.value);
+      spread.select.value = count >= dayCount ? Spread.EVERY_DAY : Spread.SPREAD_OUT;
+      this._refreshAdvisories(advisories);
+    });
+    spread.select.addEventListener('change', () => { spread.select.dataset.touched = 'true'; });
 
     // Choosing a subject narrows the teacher list to people qualified for it —
     // scrolling past 200 names to find the three who teach Chemistry is a
@@ -320,7 +370,7 @@ export class CurriculumView extends EntityListView {
 
     /** @private */ this._form = {
       classSelect, subjectSelect, teacherSelect, periodsPerWeek,
-      maxPerDay, priority, recess, consecutive, blockSize, advisories,
+      maxPerDay, priority, recess, spread, consecutive, blockSize, advisories,
     };
 
     syncEnabled();
@@ -328,7 +378,8 @@ export class CurriculumView extends EntityListView {
     return el('div', { class: 'u-stack' }, [
       el('div', { class: 'form-grid' }, [
         classSelect.wrapper, subjectSelect.wrapper, teacherSelect.wrapper,
-        periodsPerWeek.wrapper, maxPerDay.wrapper, priority.wrapper, recess.wrapper,
+        periodsPerWeek.wrapper, spread.wrapper, maxPerDay.wrapper,
+        priority.wrapper, recess.wrapper,
       ]),
       el('div', { class: 'form-grid' }, [consecutive.wrapper, blockSize.wrapper]),
       advisories,
@@ -383,6 +434,13 @@ export class CurriculumView extends EntityListView {
         message: `${draft.periodsPerWeek} periods a week cannot fit at ${draft.maxPerDay} per day over ${dayCount} days. Raise the daily maximum to at least ${Math.ceil(draft.periodsPerWeek / dayCount)}.`,
       });
     }
+    if (draft.spread === Spread.EVERY_DAY && !draft.canRunDaily(dayCount)) {
+      problems.unshift({
+        level: 'warning',
+        message: `"Every day" needs at least ${dayCount} periods a week, but this row has ${draft.periodsPerWeek}. `
+          + `It will appear on ${draft.periodsPerWeek} of the ${dayCount} days. Choose "spread across the week" to have those days set as far apart as possible.`,
+      });
+    }
 
     replaceChildren(host, problems.map((problem) => el('div', { class: `alert alert--${problem.level}` }, [
       el('span', { class: 'alert__icon', text: problem.level === 'danger' ? '!' : '?' }),
@@ -410,6 +468,7 @@ export class CurriculumView extends EntityListView {
       maxPerDay: Number(form.maxPerDay.input.value),
       priority: form.priority.select.value,
       recessPreference: form.recess.select.value,
+      spread: form.spread.select.value,
       requiresConsecutive: wantsConsecutive,
       consecutiveBlock: wantsConsecutive ? Number(form.blockSize.input.value) : 1,
     });

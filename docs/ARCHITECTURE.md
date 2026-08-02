@@ -38,7 +38,7 @@ The practical payoff is measurable: because `scheduling/` contains no DOM refere
 
 ## 1. Folder Structure
 
-This is the tree **as built** — 100 modules under `js/`.
+This is the tree **as built** — 102 modules under `js/`.
 
 ```
 ChronoSched/
@@ -52,7 +52,8 @@ ChronoSched/
 │   └── ARCHITECTURE.md            # This file
 │
 ├── tools/                         # Dev-only; never shipped to the browser
-│   ├── verify-modules.mjs         # Import/export integrity + layering enforcement
+│   ├── verify-modules.mjs         # Parse + import/export integrity + layering
+│   ├── generate-seeds.mjs         # Builds data/*.seed.json, proves it is schedulable
 │   └── scheduler-smoke-test.mjs   # Runs the engine headlessly and audits its output
 │
 ├── css/
@@ -123,6 +124,7 @@ ChronoSched/
     │       │   └── TeacherWeeklyLoadConstraint.js
     │       └── soft/                    # Each maps to a weight slider in the UI
     │           ├── CorePeriodWindowConstraint.js
+    │           ├── WeeklyDistributionConstraint.js
     │           ├── RecessSidePreferenceConstraint.js
     │           ├── DifficultySpreadConstraint.js
     │           ├── SubjectSpreadConstraint.js
@@ -623,6 +625,7 @@ This split drives everything. **Hard = filter. Soft = rank.**
 | Lab consecutive block stays intact | **HARD** | Placed as an atomic block, not per-period |
 | `periodsPerWeek` fully satisfied | **HARD (goal)** | Unmet demand → reported, not silently dropped |
 | Core subjects inside periods 1–6 | *soft* | weight 10 |
+| How often a subject runs across the week | *soft* | weight 8 |
 | Before/after-recess preference | *soft* | weight 6 |
 | No teacher gaps (free period between classes) | *soft* | weight 4 |
 | Teacher preferred free periods | *soft* | weight 3 |
@@ -796,7 +799,7 @@ one that did not yet work.
 
 ### What the checks actually assert
 
-`npm run verify` — 100 modules parsed; every relative import resolves; every
+`npm run verify` — 102 modules parsed; every relative import resolves; every
 named binding exists in its target module; no layering edge is crossed.
 
 `npm run test:scheduler` — on the bundled demo school (6 classes, 220 periods a
@@ -804,16 +807,19 @@ week), independently re-auditing the produced grid rather than trusting the
 solver's own indexes:
 
 ```text
-placed                              220/220 (100%)
-core periods inside window 1–6      176/176 (100%)
-hard-constraint violations          0
-time                                32 ms
-reproducible with a fixed seed      yes
-different output with a new seed    yes
+placed                                224/224 (100%)
+core periods inside window 1–6        176/176 (100%)
+"every day" subjects on all six days   20/20
+twice-a-week subjects on apart days      6/6
+hard-constraint violations                 0
+time                                    32 ms
+reproducible with a fixed seed           yes
+different output with a new seed         yes
+complete across 15 different seeds     15/15
 ```
 
 An over-subscribed variant (every teacher capped at 6 periods a week) returns
-110/220 in 1.1s with a per-row reason — it degrades and reports rather than
+106/224 in 2.8s with a per-row reason — it degrades and reports rather than
 hanging or silently dropping periods.
 
 A browser run through the DevTools Protocol additionally confirmed: all nine

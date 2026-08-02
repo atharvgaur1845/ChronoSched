@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
   "data": {
-    "schemaVersion": 1,
     "school": {
-      "name": "Springfield Public School",
+      "name": "Sh Brahamrishi Vidya Mandir Convent",
       "academicYear": "2026-27"
     },
     "workingDays": [
@@ -37,6 +36,7 @@
     },
     "constraintWeights": {
       "corePeriodWindow": 10,
+      "weeklyDistribution": 8,
       "recessSidePreference": 6,
       "teacherGap": 4,
       "preferredFreePeriod": 3,

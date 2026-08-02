@@ -14,7 +14,7 @@
       "unavailableSlots": [
         {
           "dayIndex": 5,
-          "periodIndex": null
+          "periodIndex": 7
         }
       ],
       "preferredFreeSlots": []
@@ -236,9 +236,27 @@
       "preferredFreeSlots": []
     },
     {
+      "id": "tch_art1",
+      "name": "Divya Rane",
+      "employeeId": "EMP-1017",
+      "subjectIds": [
+        "sub_art"
+      ],
+      "classIds": [],
+      "maxPeriodsPerDay": 4,
+      "maxPeriodsPerWeek": 12,
+      "unavailableSlots": [
+        {
+          "dayIndex": 5,
+          "periodIndex": null
+        }
+      ],
+      "preferredFreeSlots": []
+    },
+    {
       "id": "tch_lib1",
       "name": "Shalini Verma",
-      "employeeId": "EMP-1017",
+      "employeeId": "EMP-1018",
       "subjectIds": [
         "sub_lib",
         "sub_eng"

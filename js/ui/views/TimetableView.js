@@ -21,6 +21,7 @@ import { View } from '../View.js';
 import { el, replaceChildren, delegate } from '../../utils/DomUtils.js';
 import { helpHint, selectField } from '../components/FormField.js';
 import { Events, Routes } from '../../utils/Constants.js';
+import { PdfMode } from '../../services/transfer/PdfExporter.js';
 import { formatTimestamp, formatRelative } from '../../utils/TimeUtils.js';
 
 /** Grid orientation. */
@@ -877,9 +878,13 @@ export class TimetableView extends View {
 
     const mode = selectField({
       label: 'PDF layout',
+      // An explicit initial value: without one the select renders blank,
+      // because setting `.value = ''` matches no option and leaves
+      // selectedIndex at -1.
+      value: PdfMode.BY_CLASS,
       options: [
-        { value: 'byClass', label: 'One page per class' },
-        { value: 'byTeacher', label: 'One page per teacher' },
+        { value: PdfMode.BY_CLASS, label: 'One page per class' },
+        { value: PdfMode.BY_TEACHER, label: 'One page per teacher' },
       ],
       help: 'Only affects the PDF. Excel always contains the full week for every class.',
     });
@@ -891,9 +896,9 @@ export class TimetableView extends View {
         mode.wrapper,
         ...formats.map((format) => el('button', {
           class: 'quick-action',
-          disabled: !format.available,
           on: {
             click: async () => {
+              if (format.blockedReason) { this.toast(format.blockedReason, 'warning'); return; }
               const result = await this.context.transfer.runExport(format.id, {
                 ...payload,
                 options: { mode: mode.select.value },
@@ -907,7 +912,7 @@ export class TimetableView extends View {
             el('span', { class: 'quick-action__label', text: format.label }),
             el('span', {
               class: 'quick-action__desc',
-              text: format.available ? format.description : 'Not available — the library did not load.',
+              text: format.blockedReason ?? format.description,
             }),
           ]),
         ])),

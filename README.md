@@ -42,7 +42,7 @@ Three details that break static ES-module sites on Pages, all already handled he
 
 ## First run
 
-The app ships with a demo school (6 classes, 18 subjects, 17 teachers, 54 curriculum rows) so there is something to explore immediately. It is written to browser storage on first load; after that your own data is authoritative and the seeds are never read again. **Settings → Restore demo school** brings it back.
+The app ships with a demo school (6 classes, 19 subjects, 18 teachers, 58 curriculum rows) so there is something to explore immediately. It is written to browser storage on first load; after that your own data is authoritative and the seeds are never read again. **Settings → Restore demo school** brings it back.
 
 ---
 
@@ -53,6 +53,8 @@ The app ships with a demo school (6 classes, 18 subjects, 17 teachers, 54 curric
 **School data** — teachers (qualifications, workload limits, unavailable and preferred-free periods), classes, subjects, and the curriculum that links them.
 
 **Time configuration** — working days, period length, start time, any number of breaks, and which one is the recess.
+
+**How often each subject runs** — separate from how many periods it gets. Maths set to *every day* appears once on all six days before doubling up anywhere; Games or Art set to *spread across the week* with 2 periods land on Monday and Thursday rather than Monday and Tuesday.
 
 **Generate** — pick a strategy, tune the preference weights with sliders, generate. Every run creates a **new version**; nothing is ever overwritten. Versions can be renamed, duplicated, compared cell-by-cell and deleted.
 
@@ -118,22 +120,25 @@ ScheduleState ─▶ LocalSearchOptimizer              (optional polish pass)
 ScheduleState ─▶ SchedulingReport ─▶ Timetable     (new version)
 ```
 
-**Hard constraints filter; soft constraints rank.** Clashes, teacher availability, workload caps, per-subject daily caps and lab-block atomicity are absolute. "Main subjects in periods 1–6", recess-side preference, teacher gaps, preferred free periods and difficulty spread carry a weighted price — because as hard rules they make most real schools unsolvable.
+**Hard constraints filter; soft constraints rank.** Clashes, teacher availability, workload caps, per-subject daily caps and lab-block atomicity are absolute. "Main subjects in periods 1–6", how often a subject runs across the week, recess-side preference, teacher gaps, preferred free periods and difficulty spread carry a weighted price — because as hard rules they make most real schools unsolvable.
 
 Those weights live in Settings and are exposed as sliders, so an administrator retunes the timetable's priorities **without a code change**.
 
 `ScheduleState` keeps six redundant indexes so a feasibility check is O(1) rather than O(lessons). That single decision is the difference between generating in ~30ms and hanging the tab.
 
-Measured on the bundled demo school (6 classes, 220 periods a week):
+Measured on the bundled demo school (6 classes, 224 periods a week):
 
-```
-placed        220/220 (100%)
-core periods inside window 1–6:  176/176 (100%)
-hard-constraint violations       0
-time                             32 ms
+```text
+placed                             224/224 (100%)
+core periods inside window 1–6     176/176 (100%)
+"every day" subjects on all 6 days  20/20
+twice-a-week subjects, days apart     6/6
+hard-constraint violations              0
+time                                 32 ms
+complete on 15/15 different seeds     yes
 ```
 
-An over-subscribed school (every teacher capped at 6 periods a week) returns 110/220 in 1.1s with a per-row explanation — it degrades and reports rather than hanging or lying.
+An over-subscribed school (every teacher capped at 6 periods a week) returns 106/224 in 2.8s with a per-row explanation — it degrades and reports rather than hanging or lying.
 
 ### Adding a backend later
 
@@ -156,13 +161,15 @@ Nothing in `domain/`, `scheduling/`, `services/` or `ui/` changes. The constrain
 
 ```bash
 npm start              # serve on :8000
-npm run verify         # imports resolve, exports exist, layering is clean
+npm run verify         # every module parses, imports resolve, layering is clean
 npm run test:scheduler # run the engine headlessly and audit its output
+npm run seeds          # regenerate data/*.seed.json (and prove it is schedulable)
+npm test               # verify + scheduler
 ```
 
 There are no dependencies to install. `npm` is used only as a script runner.
 
-`verify-modules.mjs` exists because a no-build-step project has no compiler to catch a renamed export or a mistyped path — the failure would arrive as a blank page. It also enforces the layering rule, so an accidental `import` from `domain/` into `ui/` fails CI.
+`verify-modules.mjs` exists because a no-build-step project has no compiler. It runs `node --check` over every module (a duplicate `const` in one file takes the whole app down with a blank page), resolves every relative import, confirms each named binding exists in its target, and enforces the layering rule — so an accidental `import` from `domain/` into `ui/` fails CI.
 
 ## Browser support
 

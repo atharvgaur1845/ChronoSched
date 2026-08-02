@@ -25,6 +25,9 @@ const teacherDayKey = (teacherId, dayIndex) => `${teacherId}|${dayIndex}`;
 const subjectDayKey = (classId, subjectId, dayIndex) => `${classId}|${subjectId}|${dayIndex}`;
 const classDayKey = (classId, dayIndex) => `${classId}|${dayIndex}`;
 
+/** Shared empty set so lookups never allocate on the hot path. */
+const EMPTY_DAYS = Object.freeze(new Set());
+
 export class ScheduleState {
   /**
    * @param {import('../domain/TimeGrid.js').TimeGrid} timeGrid
@@ -47,6 +50,13 @@ export class ScheduleState {
     this._subjectDayLoad = new Map();
     /** @private @type {Map<string, number>} classId|dayIndex → difficulty sum */
     this._classDayDifficulty = new Map();
+    /**
+     * @private @type {Map<string, Set<number>>} classId|subjectId → days used
+     * Kept alongside the per-day counts because the distribution rule asks
+     * "which days is this subject already on?", and deriving that by probing
+     * every day would put a loop inside the solver's hottest path.
+     */
+    this._subjectDays = new Map();
     /** @private @type {Map<string, Set<number>>} teacherId|dayIndex → period indexes */
     this._teacherDayPeriods = new Map();
   }
@@ -129,6 +139,14 @@ export class ScheduleState {
 
     this._bump(this._subjectDayLoad, subjectDayKey(lesson.classId, lesson.subjectId, slot.dayIndex), 1);
     this._bump(this._classDayDifficulty, classDayKey(lesson.classId, slot.dayIndex), difficulty);
+
+    const pairKey = `${lesson.classId}|${lesson.subjectId}`;
+    let days = this._subjectDays.get(pairKey);
+    if (!days) {
+      days = new Set();
+      this._subjectDays.set(pairKey, days);
+    }
+    days.add(slot.dayIndex);
   }
 
   /**
@@ -149,8 +167,15 @@ export class ScheduleState {
       this._teacherDayPeriods.get(teacherDayKey(lesson.teacherId, slot.dayIndex))?.delete(slot.periodIndex);
     }
 
-    this._bump(this._subjectDayLoad, subjectDayKey(lesson.classId, lesson.subjectId, slot.dayIndex), -1);
+    const dayKey = subjectDayKey(lesson.classId, lesson.subjectId, slot.dayIndex);
+    this._bump(this._subjectDayLoad, dayKey, -1);
     this._bump(this._classDayDifficulty, classDayKey(lesson.classId, slot.dayIndex), -difficulty);
+
+    // `_bump` deletes the key when the count reaches zero, so its absence is
+    // exactly the signal that this day no longer holds the subject at all.
+    if (!this._subjectDayLoad.has(dayKey)) {
+      this._subjectDays.get(`${lesson.classId}|${lesson.subjectId}`)?.delete(slot.dayIndex);
+    }
   }
 
   /**
@@ -228,6 +253,16 @@ export class ScheduleState {
    */
   classDayDifficulty(classId, dayIndex) {
     return this._classDayDifficulty.get(classDayKey(classId, dayIndex)) ?? 0;
+  }
+
+  /**
+   * The distinct days a class already studies a subject.
+   * @param {string} classId
+   * @param {string} subjectId
+   * @returns {Set<number>} Live set — read only, never mutate.
+   */
+  subjectDays(classId, subjectId) {
+    return this._subjectDays.get(`${classId}|${subjectId}`) ?? EMPTY_DAYS;
   }
 
   /**

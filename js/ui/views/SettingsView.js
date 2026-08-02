@@ -11,6 +11,7 @@ import { View } from '../View.js';
 import { el, replaceChildren, pickFiles } from '../../utils/DomUtils.js';
 import { helpHint, selectField } from '../components/FormField.js';
 import { Events, Theme, STORAGE_PREFIX, Routes } from '../../utils/Constants.js';
+import { PdfMode } from '../../services/transfer/PdfExporter.js';
 
 export class SettingsView extends View {
   /** @returns {string} */
@@ -280,10 +281,12 @@ export class SettingsView extends View {
 
     const mode = selectField({
       label: 'PDF layout',
+      value: PdfMode.BY_CLASS,
       options: [
-        { value: 'byClass', label: 'One page per class' },
-        { value: 'byTeacher', label: 'One page per teacher' },
+        { value: PdfMode.BY_CLASS, label: 'One page per class' },
+        { value: PdfMode.BY_TEACHER, label: 'One page per teacher' },
       ],
+      help: 'Only affects the PDF. Excel always contains the full week for every class.',
     });
 
     return el('section', { class: 'card', attrs: { id: 'section-export' } }, [
@@ -291,10 +294,18 @@ export class SettingsView extends View {
       el('div', { class: 'card__body u-stack' }, [
         mode.wrapper,
         el('div', { class: 'quick-actions' }, formats.map((format) => el('button', {
+          // Never disabled. A dead button is indistinguishable from a broken
+          // one; clicking always produces an explanation.
           class: 'quick-action',
-          disabled: !format.available,
           on: {
             click: async () => {
+              // Explain, but do not navigate. Yanking the user to another
+              // screen because they clicked the wrong button takes the decision
+              // away from them; the inline link below does it on request.
+              if (format.blockedReason) {
+                this.toast(format.blockedReason, 'warning');
+                return;
+              }
               const result = await this.context.transfer.runExport(format.id, {
                 ...payload, options: { mode: mode.select.value },
               });
@@ -307,11 +318,18 @@ export class SettingsView extends View {
             el('span', { class: 'quick-action__label', text: format.label }),
             el('span', {
               class: 'quick-action__desc',
-              text: format.available ? format.description
-                : (format.id === 'pdf' && !timetable ? 'Generate a timetable first.' : 'Library unavailable.'),
+              text: format.blockedReason ?? format.description,
             }),
           ]),
         ]))),
+
+        !timetable && el('div', { class: 'alert alert--info' }, [
+          el('span', { class: 'alert__icon', text: 'i' }),
+          el('div', { class: 'alert__body' }, [
+            el('span', { text: 'PDF export needs a generated timetable. Excel and JSON work without one. ' }),
+            el('a', { href: Routes.GENERATE, text: 'Generate one now' }),
+          ]),
+        ]),
         helpHint('Export a JSON backup regularly. Browser storage can be cleared by a "clear browsing data" action or by the browser itself when disk space runs low, and a JSON file is the only complete copy.'),
       ]),
     ]);

@@ -34,6 +34,25 @@ import { createLogger } from '../utils/Logger.js';
 const log = createLogger('Scheduler');
 
 /**
+ * Restarts allowed when a run leaves periods unplaced.
+ *
+ * Three is enough to turn an ~88% single-attempt completion rate into an
+ * effectively certain one on realistic data, and costs nothing when the first
+ * attempt already succeeds.
+ */
+const DEFAULT_ATTEMPTS = 3;
+
+/**
+ * Largest shortfall still considered bad luck rather than bad data.
+ *
+ * A run that misses one or two periods usually just broke a tie badly and a
+ * different seed will fit them. A run that misses a hundred is describing a
+ * school with more teaching than its teachers can cover, and retrying only
+ * multiplies the wait before delivering the same answer.
+ */
+const RETRY_SHORTFALL_LIMIT = 5;
+
+/**
  * Small deterministic PRNG (mulberry32).
  *
  * `Math.random()` would make every run unreproducible, so a failing timetable
@@ -117,6 +136,7 @@ export class Scheduler {
    * @param {import('../domain/Timetable.js').Timetable|null} [options.basedOn]
    *        Existing version whose LOCKED lessons should be carried over.
    * @param {string} [options.label]
+   * @param {number} [options.attempts]     Restarts allowed before settling.
    * @returns {Timetable} Always returned — an unsolvable school produces a
    *          partial timetable with a report, never an exception.
    */
@@ -126,6 +146,7 @@ export class Scheduler {
     optimize = true,
     basedOn = null,
     label = '',
+    attempts = DEFAULT_ATTEMPTS,
   } = {}) {
     const startedAt = performance.now();
 
@@ -133,15 +154,13 @@ export class Scheduler {
       ?? [...this._strategies.values()][0];
 
     const context = this.createContext(schoolData);
-    const state = new ScheduleState(schoolData.timeGrid);
-    const random = createRandom(seed);
     const warnings = [];
 
     // ---- Carry over pinned manual edits -----------------------------------
-    const alreadyPlaced = this._seedLockedLessons(basedOn, state, context, warnings);
+    const locked = this._collectLockedLessons(basedOn, context, warnings);
 
     // ---- Expand and order --------------------------------------------------
-    const rawDemands = this._expander.expand(schoolData, { alreadyPlaced });
+    const rawDemands = this._expander.expand(schoolData, { alreadyPlaced: locked.alreadyPlaced });
     const demands = this._expander.order(rawDemands, context);
 
     // Representative demand per class+subject, needed by the optimiser and the
@@ -155,30 +174,61 @@ export class Scheduler {
     log.info(`Generating with "${strategy.id}": ${demands.length} placements for `
       + `${schoolData.counts.classes} classes across ${schoolData.timeGrid.slotCount} slots.`);
 
-    // ---- Solve -------------------------------------------------------------
-    const outcome = strategy.solve({ demands, state, context, registry: this._registry, random });
+    // ---- Solve, restarting if anything was left unplaced -------------------
+    //
+    // The tie-breaking jitter means a different seed explores a different part
+    // of the search space, and a run that misses one period is usually just
+    // unlucky rather than facing an impossible school. Measured on the demo
+    // data, a single attempt completes about 88% of the time; retrying lifts
+    // that to effectively always, and costs nothing in the common case because
+    // the loop stops the moment a complete timetable appears.
+    let best = null;
 
-    // ---- Improve -----------------------------------------------------------
-    if (optimize && this._optimizer) {
-      const improvement = this._optimizer.optimize({
-        state, context, registry: this._registry, demandByPair,
-      });
-      if (improvement.relocations > 0) {
-        log.debug(`Optimiser moved ${improvement.relocations} periods.`);
+    for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
+      const state = new ScheduleState(schoolData.timeGrid);
+      for (const { lesson, difficulty } of locked.lessons) state.seedLesson(lesson, difficulty);
+
+      // Golden-ratio increment: successive attempts get well-separated seeds
+      // rather than adjacent ones, which would explore near-identical space.
+      const random = createRandom(seed + attempt * 0x9E3779B1);
+      const outcome = strategy.solve({ demands, state, context, registry: this._registry, random });
+
+      if (optimize && this._optimizer) {
+        this._optimizer.optimize({ state, context, registry: this._registry, demandByPair });
       }
+
+      const missing = SchedulingReport.countMissing(state, context);
+      const quality = SchedulingReport.scoreQuality(state, context, this._registry, demandByPair).total;
+
+      const isBetter = best === null
+        || missing < best.missing
+        || (missing === best.missing && quality < best.quality);
+      if (isBetter) best = { state, outcome, missing, quality, attempt };
+
+      if (missing === 0) break;
+      if (missing > RETRY_SHORTFALL_LIMIT) {
+        log.info(`Attempt ${attempt + 1} left ${missing} period(s) unplaced — too many to be chance, `
+          + 'so the data is at fault rather than the search. Reporting this result.');
+        break;
+      }
+      log.debug(`Attempt ${attempt + 1} left ${missing} period(s) unplaced — retrying with a new seed.`);
+    }
+
+    if (best.attempt > 0) {
+      log.info(`Settled on attempt ${best.attempt + 1} of ${attempts}.`);
     }
 
     // ---- Report ------------------------------------------------------------
     const report = new SchedulingReport({
-      state,
+      state: best.state,
       context,
       registry: this._registry,
       demandByPair,
-      diagnose: (demand) => strategy._diagnose(demand, state, context, this._registry),
+      diagnose: (demand) => strategy._diagnose(demand, best.state, context, this._registry),
       strategyId: strategy.id,
       durationMs: performance.now() - startedAt,
-      nodesExplored: outcome.nodesExplored,
-      budgetExhausted: outcome.budgetExhausted,
+      nodesExplored: best.outcome.nodesExplored,
+      budgetExhausted: best.outcome.budgetExhausted,
       warnings,
     });
 
@@ -193,29 +243,35 @@ export class Scheduler {
       label: label || `Version ${schoolData.nextVersionNumber}`,
       strategyId: strategy.id,
       settingsHash: schoolData.settings.geometryHash,
-      lessons: state.lessons.map((lesson) => lesson.toJSON()),
+      lessons: best.state.lessons.map((lesson) => lesson.toJSON()),
       report: report.toJSON(),
     });
   }
 
   /**
-   * Copies locked lessons from a previous version into the fresh state and
-   * reports how many periods of each curriculum row they already satisfy.
+   * Gathers the locked lessons a regeneration must preserve, and works out how
+   * many periods of each curriculum row they already satisfy.
    *
    * This is what makes "pin the three fixtures I care about, then regenerate"
    * work — the solver treats those cells as immovable and schedules around them.
    *
+   * Collected once and replayed into each attempt's fresh state, rather than
+   * seeded in place: with restarts, every attempt needs the same pinned
+   * starting point, and the warnings must be reported once rather than once
+   * per attempt.
+   *
    * @private
    * @param {import('../domain/Timetable.js').Timetable|null} basedOn
-   * @param {ScheduleState} state
    * @param {SchedulingContext} context
    * @param {string[]} warnings
-   * @returns {Map<string, number>} curriculumId → periods already fixed.
+   * @returns {{lessons: Array<{lesson: *, difficulty: number}>, alreadyPlaced: Map<string, number>}}
    */
-  _seedLockedLessons(basedOn, state, context, warnings) {
+  _collectLockedLessons(basedOn, context, warnings) {
     /** @type {Map<string, number>} */
     const alreadyPlaced = new Map();
-    if (!basedOn) return alreadyPlaced;
+    /** @type {Array<{lesson: *, difficulty: number}>} */
+    const lessons = [];
+    if (!basedOn) return { lessons, alreadyPlaced };
 
     /** @type {Map<string, string>} `classId|subjectId` → curriculumId */
     const rowByPair = new Map();
@@ -232,8 +288,7 @@ export class Scheduler {
       const slot = context.timeGrid.getSlot(lesson.slotId);
       if (!slot) { dropped += 1; continue; }
 
-      const subject = context.subject(lesson.subjectId);
-      state.seedLesson(lesson, subject?.difficulty ?? 3);
+      lessons.push({ lesson, difficulty: context.subject(lesson.subjectId)?.difficulty ?? 3 });
       carried += 1;
 
       const curriculumId = rowByPair.get(`${lesson.classId}|${lesson.subjectId}`);
@@ -245,6 +300,6 @@ export class Scheduler {
     if (carried > 0) warnings.push(`${carried} pinned period(s) were kept from the previous version.`);
     if (dropped > 0) warnings.push(`${dropped} pinned period(s) were dropped because their time slot no longer exists.`);
 
-    return alreadyPlaced;
+    return { lessons, alreadyPlaced };
   }
 }

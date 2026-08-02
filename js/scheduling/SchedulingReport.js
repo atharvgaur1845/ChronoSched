@@ -63,7 +63,7 @@ export class SchedulingReport {
     /** @type {number} */ this.missingPeriods = required - placed;
     /** @type {number} */ this.fillRate = required === 0 ? 1 : placed / required;
 
-    const quality = SchedulingReport._scoreQuality(state, context, registry, demandByPair);
+    const quality = SchedulingReport.scoreQuality(state, context, registry, demandByPair);
     /** @type {number} */ this.softScore = quality.total;
     /** @type {Record<string, number>} */ this.softBreakdown = quality.breakdown;
 
@@ -125,14 +125,46 @@ export class SchedulingReport {
   }
 
   /**
+   * Number of curriculum periods that never found a slot.
+   *
+   * Public and cheap so the Scheduler can compare attempts without paying for
+   * a full report — building one runs the shortfall diagnosis, which probes
+   * every slot for every failing row.
+   *
+   * @param {import('./ScheduleState.js').ScheduleState} state
+   * @param {import('./SchedulingContext.js').SchedulingContext} context
+   * @returns {number}
+   */
+  static countMissing(state, context) {
+    /** @type {Map<string, number>} */
+    const actual = new Map();
+    for (const lesson of state.lessons) {
+      const key = `${lesson.classId}|${lesson.subjectId}`;
+      actual.set(key, (actual.get(key) ?? 0) + 1);
+    }
+
+    let missing = 0;
+    for (const entry of context.schoolData.curriculum) {
+      const got = actual.get(`${entry.classId}|${entry.subjectId}`) ?? 0;
+      missing += Math.max(0, entry.periodsPerWeek - got);
+    }
+    return missing;
+  }
+
+  /**
    * Total soft-constraint cost of the finished grid.
    *
    * Each lesson is temporarily lifted out before being scored, because a
    * placement evaluated against a state that still contains it would clash with
    * itself and report a nonsense figure.
-   * @private
+   *
+   * @param {import('./ScheduleState.js').ScheduleState} state
+   * @param {import('./SchedulingContext.js').SchedulingContext} context
+   * @param {import('./constraints/ConstraintRegistry.js').ConstraintRegistry} registry
+   * @param {Map<string, import('./LessonDemand.js').LessonDemand>} demandByPair
+   * @returns {{total: number, breakdown: Record<string, number>}}
    */
-  static _scoreQuality(state, context, registry, demandByPair) {
+  static scoreQuality(state, context, registry, demandByPair) {
     /** @type {Record<string, number>} */
     const breakdown = {};
     let total = 0;

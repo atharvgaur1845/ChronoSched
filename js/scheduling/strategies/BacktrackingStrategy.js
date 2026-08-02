@@ -17,6 +17,14 @@
  *   on failure would hand back an empty timetable for a school that is short by
  *   a single period.
  *
+ *   The corollary is the subtle part: because a recursive call COMMITS its
+ *   placements, abandoning a branch means undoing the whole subtree, not just
+ *   the one placement this frame made. Every commit is therefore pushed onto a
+ *   shared trail, and rewinding to a mark unwinds everything the branch did.
+ *   Undoing only the local placement leaves the subtree's lessons behind, the
+ *   next branch re-places the same demands on top of them, and the result is a
+ *   grid with two lessons in one cell.
+ *
  * THREE THINGS KEEP IT FROM RUNNING FOREVER
  *   1. BRANCH LIMIT — only the best few candidates per demand are explored. The
  *      40th-ranked slot is almost never part of a good solution, and exploring
@@ -75,7 +83,11 @@ export class BacktrackingStrategy extends ISchedulingStrategy {
    */
   solve({ demands, state, context, registry, random }) {
     const counters = { nodes: 0 };
-    const failures = this._search(0, demands, state, context, registry, random, counters);
+    // Undo log for the whole run. Locked lessons seeded before solving are
+    // deliberately absent, so a rewind can never disturb a pinned period.
+    /** @type {import('../Placement.js').Placement[]} */
+    const trail = [];
+    const failures = this._search(0, demands, state, context, registry, random, counters, trail);
 
     const budgetExhausted = counters.nodes >= this._nodeBudget;
     if (budgetExhausted) {
@@ -95,9 +107,10 @@ export class BacktrackingStrategy extends ISchedulingStrategy {
    * @param {import('../constraints/ConstraintRegistry.js').ConstraintRegistry} registry
    * @param {() => number} random
    * @param {{nodes: number}} counters
+   * @param {import('../Placement.js').Placement[]} trail Shared undo log.
    * @returns {number} Count of demands from `index` onward left unplaced.
    */
-  _search(index, demands, state, context, registry, random, counters) {
+  _search(index, demands, state, context, registry, random, counters, trail) {
     if (index >= demands.length) return 0;
 
     const demand = demands[index];
@@ -106,7 +119,7 @@ export class BacktrackingStrategy extends ISchedulingStrategy {
     // Nothing legal anywhere. Record the miss and carry on with the rest —
     // one impossible period must not cost the school its whole timetable.
     if (candidates.length === 0) {
-      return 1 + this._search(index + 1, demands, state, context, registry, random, counters);
+      return 1 + this._search(index + 1, demands, state, context, registry, random, counters, trail);
     }
 
     // Once the budget is spent the search degenerates to greedy, which is both
@@ -120,10 +133,11 @@ export class BacktrackingStrategy extends ISchedulingStrategy {
     let bestFailures = Number.POSITIVE_INFINITY;
 
     for (let branch = 0; branch < branchCount; branch += 1) {
+      const mark = trail.length;
       counters.nodes += 1;
-      state.place(candidates[branch].placement);
+      this._commit(state, trail, candidates[branch].placement);
 
-      const failures = this._search(index + 1, demands, state, context, registry, random, counters);
+      const failures = this._search(index + 1, demands, state, context, registry, random, counters, trail);
 
       // A perfect subtree can never be improved on — stop immediately.
       if (failures === 0) return 0;
@@ -140,7 +154,8 @@ export class BacktrackingStrategy extends ISchedulingStrategy {
         bestBranch = branch;
       }
 
-      state.unplace(candidates[branch].placement);
+      // Undo this placement AND everything the subtree committed beneath it.
+      this._rewind(state, trail, mark);
       if (isLastBranch) break;
     }
 
@@ -148,7 +163,30 @@ export class BacktrackingStrategy extends ISchedulingStrategy {
     // one and finish the tail. This replay is the only redundant work in the
     // algorithm, and it happens solely on subtrees that were going to fail.
     counters.nodes += 1;
-    state.place(candidates[bestBranch].placement);
-    return this._search(index + 1, demands, state, context, registry, random, counters);
+    this._commit(state, trail, candidates[bestBranch].placement);
+    return this._search(index + 1, demands, state, context, registry, random, counters, trail);
+  }
+
+  /**
+   * Applies a placement and records it for possible undo.
+   * @private
+   * @param {import('../ScheduleState.js').ScheduleState} state
+   * @param {import('../Placement.js').Placement[]} trail
+   * @param {import('../Placement.js').Placement} placement
+   */
+  _commit(state, trail, placement) {
+    state.place(placement);
+    trail.push(placement);
+  }
+
+  /**
+   * Undoes every placement made since `mark`, most recent first.
+   * @private
+   * @param {import('../ScheduleState.js').ScheduleState} state
+   * @param {import('../Placement.js').Placement[]} trail
+   * @param {number} mark
+   */
+  _rewind(state, trail, mark) {
+    while (trail.length > mark) state.unplace(trail.pop());
   }
 }

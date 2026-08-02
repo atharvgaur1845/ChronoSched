@@ -34,12 +34,27 @@ export class PdfExporter extends IExporter {
   }
 
   /**
-   * @param {object} payload
+   * Only reports whether the library is present. Whether there is anything to
+   * export is a precondition, not an availability question — see
+   * {@link unavailableReason}.
    * @returns {boolean}
    */
-  isAvailable(payload) {
-    const hasLibrary = typeof globalThis.jspdf?.jsPDF === 'function';
-    return hasLibrary && Boolean(payload?.timetable);
+  isAvailable() {
+    return typeof globalThis.jspdf?.jsPDF === 'function';
+  }
+
+  /**
+   * @param {object} payload
+   * @returns {string|null}
+   */
+  unavailableReason(payload) {
+    if (!this.isAvailable()) {
+      return 'The PDF library did not load. Use the Print button instead — the page is print-styled.';
+    }
+    if (!payload?.timetable) {
+      return 'There is no timetable to export yet. Generate one first.';
+    }
+    return null;
   }
 
   /**
@@ -82,7 +97,12 @@ export class PdfExporter extends IExporter {
         this._renderPage(doc, schoolData, timetable, entity, mode);
       });
 
-      doc.save(this._filename(`${schoolData.settings.school.name}-${timetable.label}-${mode}`));
+      // `doc.output('blob')` + our own anchor click rather than `doc.save()`:
+      // one delivery path shared with Excel and JSON, already proven to work.
+      this._deliver(
+        doc.output('blob'),
+        this._filename(`${schoolData.settings.school.name}-${timetable.label}-${mode}`),
+      );
     } catch (error) {
       log.error('PDF export failed.', error);
       return Result.fail(`Could not create the PDF: ${error.message}`);

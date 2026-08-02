@@ -19,7 +19,7 @@
 import { Result } from '../core/Result.js';
 import { LessonDemand } from '../scheduling/LessonDemand.js';
 import { ScheduleState } from '../scheduling/ScheduleState.js';
-import { Priority, RecessSide } from '../utils/Constants.js';
+import { Priority, RecessSide, Spread } from '../utils/Constants.js';
 
 /**
  * A validation context bound to one timetable snapshot.
@@ -76,6 +76,8 @@ export class ValidationSession {
       priority: entry?.priority ?? Priority.ELECTIVE,
       priorityRank: entry?.priorityRank ?? 1,
       recessPreference: entry?.recessPreference ?? RecessSide.ANY,
+      spread: entry?.spread ?? Spread.FLEXIBLE,
+      periodsPerWeek: entry?.periodsPerWeek ?? 1,
       difficulty: subject?.difficulty ?? 3,
       // Manual edits are the administrator overriding the plan, so the daily
       // cap is relaxed to the curriculum value or a permissive default rather

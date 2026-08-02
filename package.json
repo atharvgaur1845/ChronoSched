@@ -7,6 +7,7 @@
   "scripts": {
     "start": "python3 -m http.server 8000",
     "verify": "node tools/verify-modules.mjs",
+    "seeds": "node tools/generate-seeds.mjs",
     "test:scheduler": "node tools/scheduler-smoke-test.mjs",
     "test": "npm run verify && npm run test:scheduler"
   },

@@ -23,6 +23,7 @@ import { TeacherDailyLoadConstraint } from './hard/TeacherDailyLoadConstraint.js
 import { TeacherWeeklyLoadConstraint } from './hard/TeacherWeeklyLoadConstraint.js';
 
 import { CorePeriodWindowConstraint } from './soft/CorePeriodWindowConstraint.js';
+import { WeeklyDistributionConstraint } from './soft/WeeklyDistributionConstraint.js';
 import { RecessSidePreferenceConstraint } from './soft/RecessSidePreferenceConstraint.js';
 import { DifficultySpreadConstraint } from './soft/DifficultySpreadConstraint.js';
 import { SubjectSpreadConstraint } from './soft/SubjectSpreadConstraint.js';
@@ -45,6 +46,7 @@ export function createDefaultConstraintRegistry() {
     .registerHard(new TeacherWeeklyLoadConstraint())
     // Soft — order is irrelevant, all are always evaluated.
     .registerSoft(new CorePeriodWindowConstraint())
+    .registerSoft(new WeeklyDistributionConstraint())
     .registerSoft(new RecessSidePreferenceConstraint())
     .registerSoft(new DifficultySpreadConstraint())
     .registerSoft(new SubjectSpreadConstraint())
@@ -64,6 +66,13 @@ export const WEIGHT_DESCRIPTORS = [
     label: 'Main subjects early in the day',
     help: 'Raise this to push Maths, Science and other core subjects into the first periods. '
       + 'Example: at a high value, 10A gets Maths in period 2 and Library in period 8 instead of the other way round.',
+  },
+  {
+    key: 'weeklyDistribution',
+    label: 'Honour how often each subject runs',
+    help: 'Raise this to make "every day" and "spread across the week" stick. '
+      + 'Example: Games set to 2 periods a week lands on Monday and Thursday rather than Monday and Tuesday, '
+      + 'and Maths set to "every day" appears once on all six days before taking a second period on any of them.',
   },
   {
     key: 'recessSidePreference',

@@ -10,7 +10,6 @@
 
 import { IExporter } from './IExporter.js';
 import { Result } from '../../core/Result.js';
-import { downloadBlob } from '../../utils/DomUtils.js';
 import { SCHEMA_VERSION } from '../../utils/Constants.js';
 
 /** Marker so a foreign JSON file is rejected with a clear message. */
@@ -40,8 +39,10 @@ export class JsonExporter extends IExporter {
       data: schoolData.toJSON(),
     };
 
-    const blob = new Blob([JSON.stringify(document, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, this._filename(`chronosched-${schoolData.settings.school.name}`));
+    this._deliver(
+      new Blob([JSON.stringify(document, null, 2)], { type: 'application/json' }),
+      this._filename(`chronosched-${schoolData.settings.school.name}`),
+    );
 
     return Result.ok(`Exported ${schoolData.counts.timetables} timetable version(s) and all school data.`);
   }

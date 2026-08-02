@@ -208,6 +208,107 @@ console.log('-'.repeat(72));
   check('most core periods land in the preferred window', pct >= 80, `${pct}%`);
 }
 
+// --------------------------------------------------- weekly distribution
+console.log('\nWeekly distribution (how often each subject runs)');
+console.log('-'.repeat(72));
+{
+  const grid = schoolData.timeGrid;
+  const dayCount = grid.dayCount;
+
+  /** classId|subjectId → Set of day indexes actually used. */
+  const daysUsed = new Map();
+  for (const lesson of optimised.timetable.lessons) {
+    const key = `${lesson.classId}|${lesson.subjectId}`;
+    if (!daysUsed.has(key)) daysUsed.set(key, new Set());
+    daysUsed.get(key).add(grid.getSlot(lesson.slotId).dayIndex);
+  }
+
+  /** Shortest distance between two days, treating the week as a loop. */
+  const weekDistance = (a, b) => {
+    const direct = Math.abs(a - b);
+    return Math.min(direct, dayCount - direct);
+  };
+
+  let dailyRows = 0;
+  let dailyFullyCovered = 0;
+  const dailyMisses = [];
+
+  let spreadRows = 0;
+  let spreadWellSeparated = 0;
+  const spreadMisses = [];
+
+  for (const entry of schoolData.curriculum) {
+    const days = daysUsed.get(`${entry.classId}|${entry.subjectId}`) ?? new Set();
+    const className = schoolData.classes.get(entry.classId).name;
+    const subjectName = schoolData.subjects.get(entry.subjectId).name;
+
+    if (entry.spread === 'EVERY_DAY') {
+      dailyRows += 1;
+      if (days.size === dayCount) dailyFullyCovered += 1;
+      else dailyMisses.push(`${className}/${subjectName} on ${days.size}/${dayCount} days`);
+      continue;
+    }
+    if (entry.spread !== 'SPREAD_OUT' || entry.periodsPerWeek > 2 || days.size < 2) continue;
+
+    // Two-a-week subjects are the case the user actually notices: Games on
+    // Monday and Tuesday is not "twice a week" in any meaningful sense.
+    spreadRows += 1;
+    const sorted = [...days].sort((a, b) => a - b);
+    let closest = Infinity;
+    for (let i = 0; i < sorted.length; i += 1) {
+      for (let j = i + 1; j < sorted.length; j += 1) {
+        closest = Math.min(closest, weekDistance(sorted[i], sorted[j]));
+      }
+    }
+    if (closest >= 2) spreadWellSeparated += 1;
+    else spreadMisses.push(`${className}/${subjectName} on adjacent days`);
+  }
+
+  console.log(`  "every day" rows fully covering the week: ${dailyFullyCovered}/${dailyRows}`);
+  if (dailyMisses.length > 0) console.log(`    ${dailyMisses.slice(0, 4).join('; ')}`);
+  console.log(`  twice-a-week rows on non-adjacent days:   ${spreadWellSeparated}/${spreadRows}`);
+  if (spreadMisses.length > 0) console.log(`    ${spreadMisses.slice(0, 4).join('; ')}`);
+
+  check('every "every day" subject appears on all working days',
+    dailyRows > 0 && dailyFullyCovered === dailyRows,
+    `${dailyFullyCovered}/${dailyRows}`);
+  check('twice-a-week subjects land on non-adjacent days',
+    spreadRows > 0 && spreadWellSeparated / spreadRows >= 0.8,
+    `${spreadWellSeparated}/${spreadRows}`);
+}
+
+// ------------------------------------------------- robustness across seeds
+//
+// A single seed proves nothing about the next press of Generate. The solver
+// breaks ties randomly, so the honest question is "what fraction of runs come
+// back complete?" — which is also what caught the need for restarts: one
+// attempt completed 22 of 25 runs, three attempts complete all of them.
+console.log('\nRobustness across 15 different seeds');
+console.log('-'.repeat(72));
+{
+  const runs = 15;
+  let complete = 0;
+  let worstMissing = 0;
+  let slowest = 0;
+
+  for (let index = 1; index <= runs; index += 1) {
+    const startedAt = performance.now();
+    const timetable = scheduler.generate(schoolData, { seed: index * 7919, optimize: true });
+    slowest = Math.max(slowest, performance.now() - startedAt);
+
+    const missing = timetable.report.missingPeriods;
+    if (missing === 0) complete += 1;
+    worstMissing = Math.max(worstMissing, missing);
+  }
+
+  console.log(`  complete timetables: ${complete}/${runs}`);
+  console.log(`  worst shortfall:     ${worstMissing} period(s)`);
+  console.log(`  slowest run:         ${slowest.toFixed(0)}ms`);
+
+  check('every seed produces a complete timetable', complete === runs, `${complete}/${runs}`);
+  check('no run exceeds 5 seconds', slowest < 5000, `${slowest.toFixed(0)}ms`);
+}
+
 console.log('\n' + '='.repeat(72));
 console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

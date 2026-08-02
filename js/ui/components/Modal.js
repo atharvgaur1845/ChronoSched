@@ -106,7 +106,13 @@ export class ModalHost {
 
     // Focus the first meaningful control, not the close button — the user is
     // here to do something, not to leave.
-    const first = dialog.querySelector('.modal__body ' + FOCUSABLE) ?? dialog.querySelector(FOCUSABLE);
+    //
+    // Note the scoping: FOCUSABLE is a comma-separated selector list, so
+    // `'.modal__body ' + FOCUSABLE` would only prefix the FIRST entry and the
+    // rest would match anywhere in the dialog — which is how focus ended up on
+    // the close button. Query the body element directly instead.
+    const bodyElement = dialog.querySelector('.modal__body');
+    const first = bodyElement?.querySelector(FOCUSABLE) ?? dialog.querySelector(FOCUSABLE);
     /** @type {HTMLElement|null} */ (first)?.focus();
 
     const self = this;

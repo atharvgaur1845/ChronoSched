@@ -10,7 +10,7 @@
  * one uniform concept and never has to re-derive block arithmetic.
  */
 
-import { Priority, RecessSide } from '../utils/Constants.js';
+import { Priority, RecessSide, Spread } from '../utils/Constants.js';
 
 export class LessonDemand {
   /**
@@ -24,6 +24,9 @@ export class LessonDemand {
    * @param {string} data.priority
    * @param {number} data.priorityRank
    * @param {string} data.recessPreference
+   * @param {string} [data.spread]      One of {@link Spread}.
+   * @param {number} [data.periodsPerWeek] Total for the row, used to derive
+   *        the ideal gap between occurrences.
    * @param {number} data.difficulty    1–5, from the Subject.
    * @param {number} data.maxPerDay
    * @param {boolean} data.isLab
@@ -31,7 +34,8 @@ export class LessonDemand {
    */
   constructor({
     id, curriculumId, classId, subjectId, fixedTeacherId, size,
-    priority, priorityRank, recessPreference, difficulty, maxPerDay, isLab, blockId,
+    priority, priorityRank, recessPreference, spread, periodsPerWeek,
+    difficulty, maxPerDay, isLab, blockId,
   }) {
     /** @type {string} */ this.id = id;
     /** @type {string} */ this.curriculumId = curriculumId;
@@ -42,6 +46,8 @@ export class LessonDemand {
     /** @type {string} */ this.priority = priority ?? Priority.CORE;
     /** @type {number} */ this.priorityRank = priorityRank ?? 1;
     /** @type {string} */ this.recessPreference = recessPreference ?? RecessSide.ANY;
+    /** @type {string} */ this.spread = spread ?? Spread.SPREAD_OUT;
+    /** @type {number} */ this.periodsPerWeek = periodsPerWeek ?? size;
     /** @type {number} */ this.difficulty = difficulty ?? 3;
     /** @type {number} */ this.maxPerDay = maxPerDay ?? 1;
     /** @type {boolean} */ this.isLab = Boolean(isLab);

@@ -16,7 +16,7 @@
  * rather than failing the whole file.
  */
 
-import { SubjectType, Priority, RecessSide } from '../../utils/Constants.js';
+import { SubjectType, Priority, RecessSide, Spread } from '../../utils/Constants.js';
 
 /** Sheet names, in the order they appear in an exported workbook. */
 export const SHEETS = Object.freeze({
@@ -64,6 +64,7 @@ export const COLUMNS = Object.freeze({
     { key: 'subject', header: 'Subject', width: 22 },
     { key: 'teacher', header: 'Teacher (blank = auto)', width: 24 },
     { key: 'periodsPerWeek', header: 'Periods/Week', width: 14 },
+    { key: 'spread', header: 'How Often', width: 15 },
     { key: 'maxPerDay', header: 'Max/Day', width: 10 },
     { key: 'priority', header: 'Priority', width: 15 },
     { key: 'recessPreference', header: 'Recess Side', width: 13 },
@@ -93,7 +94,13 @@ export const README_ROWS = [
   ['Preferred Free', 'Same format as Unavailable', 'Wed P8'],
   ['Priority', Object.values(Priority).join(' / '), 'CORE'],
   ['Recess Side', Object.values(RecessSide).join(' / '), 'BEFORE'],
+  ['How Often', Object.values(Spread).join(' / '), 'EVERY_DAY'],
   ['Consecutive Block', '1 for normal, 2+ for double periods', '2'],
+  [''],
+  ['Periods/Week sets HOW MANY. How Often sets WHEN:'],
+  ['EVERY_DAY   one lesson on each working day — Maths, Science, English'],
+  ['SPREAD_OUT  keep the days apart — Games twice a week means Mon and Thu, not Mon and Tue'],
+  ['FLEXIBLE    no preference; the generator optimises other things instead'],
   [''],
   ['Difference between Unavailable and Preferred Free:'],
   ['Unavailable is absolute — the teacher is never scheduled then.'],

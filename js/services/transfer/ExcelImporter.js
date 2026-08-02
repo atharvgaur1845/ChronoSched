@@ -20,7 +20,7 @@ import { Subject } from '../../domain/Subject.js';
 import { Teacher } from '../../domain/Teacher.js';
 import { CurriculumEntry } from '../../domain/CurriculumEntry.js';
 import { createId } from '../../utils/IdGenerator.js';
-import { SubjectType, Priority, RecessSide } from '../../utils/Constants.js';
+import { SubjectType, Priority, RecessSide, Spread } from '../../utils/Constants.js';
 import { createLogger } from '../../utils/Logger.js';
 
 const log = createLogger('ExcelImporter');
@@ -293,12 +293,16 @@ export class ExcelImporter {
       const block = Number(values.consecutiveBlock || 1);
       const priority = String(values.priority ?? '').toUpperCase() || Priority.CORE;
       const recess = String(values.recessPreference ?? '').toUpperCase() || RecessSide.ANY;
+      const spread = String(values.spread ?? '').toUpperCase().replace(/[\s-]+/g, '_') || Spread.SPREAD_OUT;
 
       if (!Object.values(Priority).includes(priority)) {
         problems.push({ sheet: SHEETS.CURRICULUM, row, level: 'warning', message: `Priority "${values.priority}" is not recognised — using ${Priority.CORE}.` });
       }
       if (!Object.values(RecessSide).includes(recess)) {
         problems.push({ sheet: SHEETS.CURRICULUM, row, level: 'warning', message: `Recess Side "${values.recessPreference}" is not recognised — using ${RecessSide.ANY}.` });
+      }
+      if (!Object.values(Spread).includes(spread)) {
+        problems.push({ sheet: SHEETS.CURRICULUM, row, level: 'warning', message: `How Often "${values.spread}" is not recognised — using ${Spread.SPREAD_OUT}. Valid values: ${Object.values(Spread).join(', ')}.` });
       }
 
       const existing = schoolData.curriculum.find(
@@ -314,6 +318,7 @@ export class ExcelImporter {
         maxPerDay: Number(values.maxPerDay || 1),
         priority: Object.values(Priority).includes(priority) ? priority : Priority.CORE,
         recessPreference: Object.values(RecessSide).includes(recess) ? recess : RecessSide.ANY,
+        spread: Object.values(Spread).includes(spread) ? spread : Spread.SPREAD_OUT,
         requiresConsecutive: block > 1,
         consecutiveBlock: block,
       });

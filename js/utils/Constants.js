@@ -92,6 +92,25 @@ export const RecessSide = Object.freeze({
   ANY:    'ANY',
 });
 
+/**
+ * How a subject's periods should be distributed across the working week.
+ *
+ * `periodsPerWeek` says HOW MANY; this says HOW SPREAD. They are genuinely
+ * different questions: two periods of Art a week can land Monday+Tuesday or
+ * Monday+Thursday, and only the second is what a school means by "twice a
+ * week".
+ *
+ * @readonly @enum {string}
+ */
+export const Spread = Object.freeze({
+  /** One period on every working day — the shape core subjects want. */
+  EVERY_DAY: 'EVERY_DAY',
+  /** Push the periods as far apart across the week as they will go. */
+  SPREAD_OUT: 'SPREAD_OUT',
+  /** No distribution preference; the solver optimises other things instead. */
+  FLEXIBLE: 'FLEXIBLE',
+});
+
 /** @readonly @enum {string} */
 export const SlotKind = Object.freeze({
   TEACHING: 'TEACHING',
@@ -133,6 +152,7 @@ export const ToastLevel = Object.freeze({
  */
 export const DEFAULT_CONSTRAINT_WEIGHTS = Object.freeze({
   corePeriodWindow:     10,
+  weeklyDistribution:    8,
   recessSidePreference:  6,
   teacherGap:            4,
   preferredFreePeriod:   3,
@@ -144,7 +164,7 @@ export const DEFAULT_CONSTRAINT_WEIGHTS = Object.freeze({
 /** Fallback settings used when no seed and no stored settings exist. */
 export const DEFAULT_SETTINGS = Object.freeze({
   schemaVersion: SCHEMA_VERSION,
-  school: { name: 'My School', academicYear: '2026-27' },
+  school: { name: 'Sh Brahamrishi Vidya Mandir Convent', academicYear: '2026-27' },
   workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   dayStart: '08:00',
   periodDurationMinutes: 40,

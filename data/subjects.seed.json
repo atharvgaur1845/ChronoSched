@@ -138,12 +138,20 @@
       "colorSlot": 5
     },
     {
+      "id": "sub_art",
+      "name": "Art",
+      "shortName": "ART",
+      "type": "ACTIVITY",
+      "difficulty": 1,
+      "colorSlot": 4
+    },
+    {
       "id": "sub_lib",
       "name": "Library",
       "shortName": "LIB",
       "type": "ACTIVITY",
       "difficulty": 1,
-      "colorSlot": 4
+      "colorSlot": 3
     }
   ]
 }
